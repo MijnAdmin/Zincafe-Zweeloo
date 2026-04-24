@@ -1,0 +1,2474 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Zincafé Zweeloo — Deelnemersbeheer</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Fraunces:ital,wght@0,300;0,400;0,600;1,300;1,400&family=DM+Sans:wght@300;400;500;600&display=swap');
+
+  :root {
+    --blauw: #1a3a5c;
+    --blauw-mid: #2a5a8c;
+    --blauw-licht: #e8f0f8;
+    --oranje: #e07a30;
+    --oranje-licht: #fdf0e4;
+    --wit: #fafaf8;
+    --grijs-licht: #f2f1ee;
+    --grijs: #c8c4bc;
+    --grijs-donker: #7a7470;
+    --tekst: #1c1a18;
+    --tekst-zacht: #5a5450;
+    --groen: #2d7a4a;
+    --groen-licht: #e6f4ec;
+    --rood: #c0392b;
+    --rood-licht: #fdecea;
+    --geel: #c97d10;
+    --geel-licht: #fef6e0;
+    --paars: #5a3a7a;
+    --paars-licht: #f0eaf8;
+    --rand: #e2dfd8;
+    --schaduw: 0 2px 8px rgba(26,58,92,0.08);
+    --schaduw-lg: 0 8px 32px rgba(26,58,92,0.12);
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--wit);
+    color: var(--tekst);
+    font-size: 14px;
+    line-height: 1.5;
+    min-height: 100vh;
+  }
+
+  /* ─── LAYOUT ─── */
+  #app { display: flex; min-height: 100vh; }
+
+  #sidebar {
+    width: 220px;
+    background: var(--blauw);
+    color: white;
+    display: flex;
+    flex-direction: column;
+    flex-shrink: 0;
+    position: sticky;
+    top: 0;
+    height: 100vh;
+    overflow-y: auto;
+  }
+
+  .sidebar-logo {
+    padding: 24px 20px 20px;
+    border-bottom: 1px solid rgba(255,255,255,0.1);
+  }
+  .sidebar-logo h1 {
+    font-family: 'Fraunces', serif;
+    font-size: 18px;
+    font-weight: 600;
+    letter-spacing: 0.01em;
+    line-height: 1.2;
+  }
+  .sidebar-logo span {
+    display: block;
+    font-size: 11px;
+    color: rgba(255,255,255,0.5);
+    font-weight: 300;
+    margin-top: 3px;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+  }
+
+  .sidebar-nav { padding: 12px 0; flex: 1; }
+  .nav-section { padding: 8px 16px 4px; font-size: 10px; text-transform: uppercase; letter-spacing: 0.1em; color: rgba(255,255,255,0.35); font-weight: 500; }
+  .nav-item {
+    display: flex; align-items: center; gap: 10px;
+    padding: 9px 20px; cursor: pointer; font-size: 13.5px;
+    color: rgba(255,255,255,0.75); transition: all 0.15s;
+    border-left: 3px solid transparent;
+  }
+  .nav-item:hover { background: rgba(255,255,255,0.07); color: white; }
+  .nav-item.active { background: rgba(255,255,255,0.1); color: white; border-left-color: var(--oranje); font-weight: 500; }
+  .nav-item .icon { font-size: 15px; width: 18px; text-align: center; }
+  .nav-badge {
+    margin-left: auto; background: var(--oranje); color: white;
+    font-size: 10px; font-weight: 600; padding: 1px 6px;
+    border-radius: 10px; min-width: 18px; text-align: center;
+  }
+
+  .sidebar-footer {
+    padding: 14px 20px;
+    border-top: 1px solid rgba(255,255,255,0.1);
+    font-size: 11px; color: rgba(255,255,255,0.4);
+  }
+
+  #main { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+
+  #topbar {
+    background: white;
+    border-bottom: 1px solid var(--rand);
+    padding: 0 28px;
+    height: 56px;
+    display: flex; align-items: center; gap: 16px;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.04);
+  }
+  #topbar h2 {
+    font-family: 'Fraunces', serif;
+    font-size: 20px; font-weight: 400;
+    color: var(--blauw); flex: 1;
+  }
+
+  #content { flex: 1; overflow-y: auto; padding: 28px; }
+
+  /* ─── CARDS & PANELS ─── */
+  .card {
+    background: white; border: 1px solid var(--rand);
+    border-radius: 10px; padding: 20px;
+    box-shadow: var(--schaduw);
+  }
+  .card-title {
+    font-family: 'Fraunces', serif; font-size: 16px;
+    font-weight: 400; color: var(--blauw); margin-bottom: 16px;
+  }
+
+  .stat-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 12px; margin-bottom: 24px; }
+  .stat-card {
+    background: white; border: 1px solid var(--rand); border-radius: 10px;
+    padding: 16px 18px; box-shadow: var(--schaduw);
+    border-top: 3px solid var(--blauw-mid);
+  }
+  .stat-card.oranje { border-top-color: var(--oranje); }
+  .stat-card.groen  { border-top-color: var(--groen); }
+  .stat-card.rood   { border-top-color: var(--rood); }
+  .stat-card.geel   { border-top-color: var(--geel); }
+  .stat-card .label { font-size: 11px; color: var(--grijs-donker); text-transform: uppercase; letter-spacing: 0.06em; font-weight: 500; }
+  .stat-card .value { font-family: 'Fraunces', serif; font-size: 28px; font-weight: 600; color: var(--blauw); line-height: 1.1; margin-top: 4px; }
+  .stat-card .sub   { font-size: 11px; color: var(--grijs-donker); margin-top: 2px; }
+
+  /* ─── BUTTONS ─── */
+  .btn {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 8px 16px; border-radius: 6px; font-size: 13px;
+    font-family: 'DM Sans', sans-serif; font-weight: 500;
+    cursor: pointer; border: none; transition: all 0.15s;
+    text-decoration: none; white-space: nowrap;
+  }
+  .btn-primary { background: var(--blauw); color: white; }
+  .btn-primary:hover { background: var(--blauw-mid); }
+  .btn-oranje { background: var(--oranje); color: white; }
+  .btn-oranje:hover { background: #c96a20; }
+  .btn-outline { background: white; color: var(--blauw); border: 1px solid var(--blauw); }
+  .btn-outline:hover { background: var(--blauw-licht); }
+  .btn-ghost { background: transparent; color: var(--grijs-donker); border: 1px solid var(--rand); }
+  .btn-ghost:hover { background: var(--grijs-licht); color: var(--tekst); }
+  .btn-danger { background: var(--rood-licht); color: var(--rood); border: 1px solid #f5c0bb; }
+  .btn-danger:hover { background: var(--rood); color: white; }
+  .btn-sm { padding: 5px 10px; font-size: 12px; }
+  .btn-icon { padding: 6px 8px; }
+
+  /* ─── FORMS ─── */
+  .form-row { display: grid; gap: 14px; margin-bottom: 14px; }
+  .form-row.cols-2 { grid-template-columns: 1fr 1fr; }
+  .form-row.cols-3 { grid-template-columns: 1fr 1fr 1fr; }
+  .form-group { display: flex; flex-direction: column; gap: 4px; }
+  .form-group label { font-size: 12px; font-weight: 500; color: var(--tekst-zacht); }
+  .form-group input, .form-group select, .form-group textarea {
+    padding: 8px 10px; border: 1px solid var(--rand); border-radius: 6px;
+    font-family: 'DM Sans', sans-serif; font-size: 13px; color: var(--tekst);
+    background: white; outline: none; transition: border-color 0.15s;
+  }
+  .form-group input:focus, .form-group select:focus, .form-group textarea:focus {
+    border-color: var(--blauw-mid); box-shadow: 0 0 0 3px rgba(42,90,140,0.08);
+  }
+  .form-group textarea { resize: vertical; min-height: 70px; }
+  .form-hint { font-size: 11px; color: var(--grijs-donker); }
+
+  /* ─── TABLES ─── */
+  .tbl-wrap { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; }
+  thead tr { border-bottom: 2px solid var(--rand); }
+  thead th {
+    text-align: left; padding: 10px 12px; font-size: 11px;
+    font-weight: 600; color: var(--grijs-donker);
+    text-transform: uppercase; letter-spacing: 0.06em;
+    cursor: pointer; user-select: none; white-space: nowrap;
+  }
+  thead th:hover { color: var(--blauw); }
+  tbody tr { border-bottom: 1px solid var(--grijs-licht); transition: background 0.1s; }
+  tbody tr:hover { background: #f9f8f6; }
+  tbody td { padding: 10px 12px; font-size: 13px; vertical-align: middle; }
+  .td-actions { display: flex; gap: 4px; justify-content: flex-end; }
+
+  /* ─── BADGES ─── */
+  .badge {
+    display: inline-flex; align-items: center; gap: 4px;
+    padding: 2px 8px; border-radius: 20px; font-size: 11px; font-weight: 500;
+  }
+  .badge-dot { width: 6px; height: 6px; border-radius: 50%; }
+  .badge.bevestigd  { background: var(--groen-licht);  color: var(--groen); }
+  .badge.wachtlijst { background: var(--geel-licht);   color: var(--geel); }
+  .badge.nieuw      { background: var(--blauw-licht);  color: var(--blauw-mid); }
+  .badge.afgemeld   { background: var(--grijs-licht);  color: var(--grijs-donker); }
+  .badge.aanwezig   { background: var(--groen-licht);  color: var(--groen); }
+  .badge.no-show    { background: var(--rood-licht);   color: var(--rood); }
+  .badge.geannuleerd{ background: var(--rood-licht);   color: var(--rood); }
+  .badge.open       { background: var(--groen-licht);  color: var(--groen); }
+  .badge.vol        { background: var(--rood-licht);   color: var(--rood); }
+  .badge.bijna-vol  { background: var(--geel-licht);   color: var(--geel); }
+  .badge.gesloten   { background: var(--grijs-licht);  color: var(--grijs-donker); }
+  .badge.losse-avond{ background: var(--paars-licht);  color: var(--paars); }
+  .badge.reeks      { background: var(--blauw-licht);  color: var(--blauw-mid); }
+
+  /* ─── MODAL ─── */
+  .modal-overlay {
+    position: fixed; inset: 0; background: rgba(20,30,40,0.55);
+    display: flex; align-items: center; justify-content: center;
+    z-index: 1000; padding: 20px;
+    backdrop-filter: blur(2px);
+  }
+  .modal-overlay.hidden { display: none; }
+  .modal {
+    background: white; border-radius: 12px; width: 100%;
+    max-width: 640px; max-height: 90vh; overflow-y: auto;
+    box-shadow: var(--schaduw-lg); animation: modalIn 0.2s ease;
+  }
+  .modal-lg { max-width: 820px; }
+  @keyframes modalIn { from { opacity:0; transform:translateY(12px); } to { opacity:1; transform:none; } }
+  .modal-header {
+    padding: 20px 24px 16px; border-bottom: 1px solid var(--rand);
+    display: flex; align-items: center; gap: 12px;
+  }
+  .modal-header h3 { font-family: 'Fraunces', serif; font-size: 18px; font-weight: 400; color: var(--blauw); flex: 1; }
+  .modal-body { padding: 20px 24px; }
+  .modal-footer { padding: 14px 24px; border-top: 1px solid var(--rand); display: flex; gap: 8px; justify-content: flex-end; }
+
+  /* ─── SEARCH/FILTER BAR ─── */
+  .filter-bar { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-bottom: 16px; }
+  .search-wrap { position: relative; }
+  .search-wrap input { padding-left: 32px; width: 220px; }
+  .search-icon { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: var(--grijs); font-size: 13px; }
+
+  /* ─── PROGRESS BAR ─── */
+  .progress-bar { height: 6px; background: var(--grijs-licht); border-radius: 3px; overflow: hidden; }
+  .progress-fill { height: 100%; border-radius: 3px; background: var(--groen); transition: width 0.3s; }
+  .progress-fill.geel { background: var(--geel); }
+  .progress-fill.rood { background: var(--rood); }
+
+  /* ─── TABS ─── */
+  .tabs { display: flex; gap: 2px; border-bottom: 2px solid var(--rand); margin-bottom: 20px; }
+  .tab {
+    padding: 8px 16px; font-size: 13px; font-weight: 500; cursor: pointer;
+    color: var(--grijs-donker); border-bottom: 2px solid transparent;
+    margin-bottom: -2px; transition: all 0.15s;
+  }
+  .tab:hover { color: var(--blauw); }
+  .tab.active { color: var(--blauw); border-bottom-color: var(--oranje); }
+
+  /* ─── NOTIFICATIES ─── */
+  #toast-container { position: fixed; bottom: 24px; right: 24px; z-index: 2000; display: flex; flex-direction: column; gap: 8px; }
+  .toast {
+    background: var(--blauw); color: white; padding: 12px 18px; border-radius: 8px;
+    font-size: 13px; box-shadow: var(--schaduw-lg); display: flex; align-items: center; gap: 8px;
+    animation: toastIn 0.25s ease; max-width: 340px;
+  }
+  .toast.succes { background: var(--groen); }
+  .toast.fout   { background: var(--rood); }
+  .toast.waarschuwing { background: var(--geel); color: var(--tekst); }
+  @keyframes toastIn { from { opacity:0; transform:translateX(20px); } to { opacity:1; transform:none; } }
+
+  /* ─── SECTION HEADER ─── */
+  .section-header { display: flex; align-items: center; gap: 12px; margin-bottom: 20px; }
+  .section-header h2 { font-family: 'Fraunces', serif; font-size: 22px; font-weight: 400; color: var(--blauw); }
+  .section-header .actions { margin-left: auto; display: flex; gap: 8px; }
+
+  /* ─── AGENDA CARD ─── */
+  .activiteit-card {
+    background: white; border: 1px solid var(--rand); border-radius: 10px;
+    padding: 16px 18px; box-shadow: var(--schaduw); display: flex;
+    align-items: flex-start; gap: 16px; transition: box-shadow 0.15s;
+    margin-bottom: 10px;
+  }
+  .activiteit-card:hover { box-shadow: var(--schaduw-lg); }
+  .act-datum {
+    background: var(--blauw); color: white; border-radius: 8px;
+    padding: 8px 10px; text-align: center; min-width: 52px; flex-shrink: 0;
+  }
+  .act-datum .dag { font-family: 'Fraunces', serif; font-size: 22px; font-weight: 600; line-height: 1; }
+  .act-datum .mnd { font-size: 10px; text-transform: uppercase; letter-spacing: 0.06em; opacity: 0.8; }
+  .act-info { flex: 1; }
+  .act-info h3 { font-size: 14px; font-weight: 600; color: var(--tekst); margin-bottom: 3px; }
+  .act-meta { font-size: 12px; color: var(--grijs-donker); display: flex; gap: 12px; flex-wrap: wrap; margin-top: 4px; }
+  .act-cap { display: flex; align-items: center; gap: 10px; min-width: 150px; }
+
+  /* ─── DEELNEMER KAART ─── */
+  .dl-initials {
+    width: 36px; height: 36px; border-radius: 50%; background: var(--blauw-licht);
+    color: var(--blauw-mid); font-size: 12px; font-weight: 600;
+    display: inline-flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+  }
+
+  /* ─── AANWEZIGHEIDSLIJST ─── */
+  .presentielijst-item {
+    display: flex; align-items: center; gap: 12px; padding: 8px 0;
+    border-bottom: 1px solid var(--grijs-licht);
+  }
+  .checkbox-groot {
+    width: 22px; height: 22px; border-radius: 5px; border: 2px solid var(--rand);
+    display: flex; align-items: center; justify-content: center; cursor: pointer;
+    transition: all 0.15s; flex-shrink: 0;
+  }
+  .checkbox-groot.checked { background: var(--groen); border-color: var(--groen); color: white; }
+  .checkbox-groot.nee     { background: var(--rood-licht); border-color: var(--rood); color: var(--rood); }
+
+  /* ─── COMMUNICATIE ─── */
+  .whatsapp-btn {
+    background: #25D366; color: white; display: inline-flex; align-items: center;
+    gap: 6px; padding: 8px 14px; border-radius: 6px; font-size: 13px;
+    font-weight: 500; cursor: pointer; border: none; transition: background 0.15s;
+    text-decoration: none;
+  }
+  .whatsapp-btn:hover { background: #1da851; }
+
+  /* ─── UTILITY ─── */
+  .hidden  { display: none !important; }
+  .gap-8   { gap: 8px; }
+  .flex    { display: flex; align-items: center; }
+  .ml-auto { margin-left: auto; }
+  .mt-16   { margin-top: 16px; }
+  .mt-8    { margin-top: 8px; }
+  .mb-16   { margin-bottom: 16px; }
+  .text-muted { color: var(--grijs-donker); font-size: 12px; }
+  .divider { border: none; border-top: 1px solid var(--rand); margin: 16px 0; }
+  .empty-state { text-align: center; padding: 48px 24px; color: var(--grijs-donker); }
+  .empty-state .emoji { font-size: 40px; margin-bottom: 12px; }
+  .empty-state p { font-size: 14px; }
+
+  /* ─── RESPONSIVE ─── */
+  @media (max-width: 768px) {
+    #sidebar { display: none; }
+    #content { padding: 16px; }
+    .stat-grid { grid-template-columns: repeat(2, 1fr); }
+    .form-row.cols-2, .form-row.cols-3 { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+<div id="app">
+  <!-- SIDEBAR -->
+  <nav id="sidebar">
+    <div class="sidebar-logo">
+      <h1>Zincafé<br>Zweeloo</h1>
+      <span>Deelnemersbeheer</span>
+    </div>
+    <div class="sidebar-nav">
+      <div class="nav-section">Overzicht</div>
+      <div class="nav-item active" onclick="navigeer('dashboard')" data-view="dashboard">
+        <span class="icon">📊</span> Dashboard
+      </div>
+      <div class="nav-section">Organisatie</div>
+      <div class="nav-item" onclick="navigeer('activiteiten')" data-view="activiteiten">
+        <span class="icon">📅</span> Activiteiten
+      </div>
+      <div class="nav-item" onclick="navigeer('deelnemers')" data-view="deelnemers">
+        <span class="icon">👥</span> Deelnemers
+      </div>
+      <div class="nav-item" onclick="navigeer('aanmeldingen')" data-view="aanmeldingen">
+        <span class="icon">📋</span> Aanmeldingen
+        <span class="nav-badge" id="badge-nieuw">0</span>
+      </div>
+      <div class="nav-section">Beheer</div>
+      <div class="nav-item" onclick="navigeer('presentie')" data-view="presentie">
+        <span class="icon">✅</span> Presentielijst
+      </div>
+      <div class="nav-item" onclick="navigeer('communicatie')" data-view="communicatie">
+        <span class="icon">✉️</span> Communicatie
+      </div>
+      <div class="nav-section">Systeem</div>
+      <div class="nav-item" onclick="navigeer('export')" data-view="export">
+        <span class="icon">💾</span> Export / Backup
+      </div>
+    </div>
+    <div class="sidebar-footer">v1.0 · localStorage</div>
+  </nav>
+
+  <!-- MAIN -->
+  <div id="main">
+    <div id="topbar">
+      <h2 id="topbar-titel">Dashboard</h2>
+      <div id="topbar-acties"></div>
+    </div>
+    <div id="content">
+      <!-- Dynamisch gevuld door JS -->
+    </div>
+  </div>
+</div>
+
+<!-- MODALS -->
+<div id="modal-overlay" class="modal-overlay hidden" onclick="sluitModal(event)">
+  <div class="modal" id="modal-box" onclick="event.stopPropagation()">
+    <div class="modal-header">
+      <h3 id="modal-titel">Modal</h3>
+      <button class="btn btn-ghost btn-sm btn-icon" onclick="sluitModal()">✕</button>
+    </div>
+    <div class="modal-body" id="modal-inhoud"></div>
+    <div class="modal-footer" id="modal-footer"></div>
+  </div>
+</div>
+
+<!-- TOASTS -->
+<div id="toast-container"></div>
+
+<script>
+'use strict';
+
+// ═══════════════════════════════════════════════
+// DATA STORE
+// ═══════════════════════════════════════════════
+const STORE_KEY = 'zincafe_admin_v1';
+
+let db = {
+  activiteiten: [],
+  deelnemers: [],
+  aanmeldingen: [],
+  instellingen: {
+    naam: 'Zincafé Zweeloo',
+    email: 'info@zincafe-zweeloo.nl',
+  }
+};
+
+function laadData() {
+  try {
+    const raw = localStorage.getItem(STORE_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      db = { ...db, ...parsed };
+    } else {
+      vulVoorbeelddata();
+    }
+  } catch (e) {
+    console.error('Laad fout:', e);
+    vulVoorbeelddata();
+  }
+}
+
+function slaOp() {
+  try {
+    localStorage.setItem(STORE_KEY, JSON.stringify(db));
+  } catch (e) {
+    toast('Opslaan mislukt — localStorage vol?', 'fout');
+  }
+}
+
+function uid() {
+  return Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+}
+
+function nu() { return new Date().toISOString(); }
+
+function vulVoorbeelddata() {
+  const vandaag = new Date();
+  const over2w  = new Date(vandaag.getTime() + 14 * 86400000);
+  const over4w  = new Date(vandaag.getTime() + 28 * 86400000);
+  const over6w  = new Date(vandaag.getTime() + 42 * 86400000);
+  const fmt = d => d.toISOString().split('T')[0];
+
+  const reeks1 = uid();
+  const act1 = uid(), act2 = uid(), act3 = uid();
+  const loos1 = uid();
+
+  db.activiteiten = [
+    { id: act1, naam: 'Filosofie van A tot Z — avond 1', type: 'reeks', reeksId: reeks1, reeksNaam: 'Filosofie van A tot Z', datum: fmt(over2w), tijd: '20:00', locatie: 'Zincafé Zweeloo', maxDeelnemers: 10, groepen: [{id:'g1',naam:'Groep 1',max:10},{id:'g2',naam:'Groep 2',max:10}], status: 'open', omschrijving: 'Eerste avond van de reeks.', aangemaakt: nu() },
+    { id: act2, naam: 'Filosofie van A tot Z — avond 2', type: 'reeks', reeksId: reeks1, reeksNaam: 'Filosofie van A tot Z', datum: fmt(over4w), tijd: '20:00', locatie: 'Zincafé Zweeloo', maxDeelnemers: 10, groepen: [{id:'g1',naam:'Groep 1',max:10},{id:'g2',naam:'Groep 2',max:10}], status: 'open', omschrijving: '', aangemaakt: nu() },
+    { id: act3, naam: 'Filosofie van A tot Z — avond 3', type: 'reeks', reeksId: reeks1, reeksNaam: 'Filosofie van A tot Z', datum: fmt(over6w), tijd: '20:00', locatie: 'Zincafé Zweeloo', maxDeelnemers: 10, groepen: [{id:'g1',naam:'Groep 1',max:10},{id:'g2',naam:'Groep 2',max:10}], status: 'open', omschrijving: '', aangemaakt: nu() },
+    { id: loos1, naam: 'Zincafé Thema-avond: Geluk', type: 'losse-avond', reeksId: null, reeksNaam: '', datum: fmt(over2w), tijd: '19:30', locatie: 'Zincafé Zweeloo', maxDeelnemers: 20, groepen: [], status: 'open', omschrijving: 'Losse avond over geluk.', aangemaakt: nu() },
+  ];
+
+  const dl = (vn, an, email, tel, wpl) => ({ id: uid(), voornaam: vn, achternaam: an, email, telefoon: tel, woonplaats: wpl, notities: '', toestemmingEmail: true, toestemmingWhatsApp: false, aangemaakt: nu() });
+  db.deelnemers = [
+    dl('Anneke','de Vries','anneke@example.nl','0612345678','Zweeloo'),
+    dl('Bert','Jansen','bert@example.nl','0623456789','Coevorden'),
+    dl('Clara','Smit','clara@example.nl','0634567890','Sleen'),
+    dl('Daan','Bakker','daan@example.nl','','Zweeloo'),
+    dl('Eva','van den Berg','eva@example.nl','0645678901','Aalden'),
+    dl('Frank','Mulder','frank@example.nl','0656789012','Zweeloo'),
+    dl('Greta','Kok','greta@example.nl','','Dalen'),
+    dl('Hans','Visser','hans@example.nl','0667890123','Coevorden'),
+  ];
+
+  const aanm = (dlId, actId, groepId, status) => ({ id: uid(), deelnemerId: dlId, activiteitId: actId, groepId: groepId || null, status, bron: 'website', aangemeld: nu(), statusHistory: [{status, datum: nu()}], notities: '' });
+  db.aanmeldingen = [
+    aanm(db.deelnemers[0].id, act1, 'g1', 'bevestigd'),
+    aanm(db.deelnemers[1].id, act1, 'g1', 'bevestigd'),
+    aanm(db.deelnemers[2].id, act1, 'g2', 'bevestigd'),
+    aanm(db.deelnemers[3].id, act1, 'g2', 'wachtlijst'),
+    aanm(db.deelnemers[4].id, act1, 'g1', 'bevestigd'),
+    aanm(db.deelnemers[5].id, loos1, null, 'nieuw'),
+    aanm(db.deelnemers[6].id, loos1, null, 'bevestigd'),
+    aanm(db.deelnemers[7].id, loos1, null, 'nieuw'),
+  ];
+  slaOp();
+}
+
+// ═══════════════════════════════════════════════
+// NAVIGATIE
+// ═══════════════════════════════════════════════
+let huidigView = 'dashboard';
+
+function navigeer(view) {
+  huidigView = view;
+  document.querySelectorAll('.nav-item').forEach(el => {
+    el.classList.toggle('active', el.dataset.view === view);
+  });
+  const titels = {
+    dashboard: 'Dashboard', activiteiten: 'Activiteiten', deelnemers: 'Deelnemers',
+    aanmeldingen: 'Aanmeldingen', presentie: 'Presentielijst',
+    communicatie: 'Communicatie', export: 'Export & Backup'
+  };
+  document.getElementById('topbar-titel').textContent = titels[view] || view;
+  document.getElementById('topbar-acties').innerHTML = '';
+  renderView(view);
+  bijwerkBadges();
+}
+
+function renderView(view) {
+  const c = document.getElementById('content');
+  switch(view) {
+    case 'dashboard':    c.innerHTML = renderDashboard(); break;
+    case 'activiteiten': c.innerHTML = renderActiviteiten(); break;
+    case 'deelnemers':   c.innerHTML = renderDeelnemers(); break;
+    case 'aanmeldingen': c.innerHTML = renderAanmeldingen(); break;
+    case 'presentie':    c.innerHTML = renderPresentie(); break;
+    case 'communicatie': c.innerHTML = renderCommunicatie(); break;
+    case 'export':       c.innerHTML = renderExport(); break;
+    default:             c.innerHTML = '<p>Onbekende pagina.</p>';
+  }
+}
+
+function bijwerkBadges() {
+  const nieuweAanmeldingen = db.aanmeldingen.filter(a => a.status === 'nieuw').length;
+  document.getElementById('badge-nieuw').textContent = nieuweAanmeldingen;
+  document.getElementById('badge-nieuw').classList.toggle('hidden', nieuweAanmeldingen === 0);
+}
+
+// ═══════════════════════════════════════════════
+// HELPERS
+// ═══════════════════════════════════════════════
+function getDl(id)   { return db.deelnemers.find(d => d.id === id); }
+function getAct(id)  { return db.activiteiten.find(a => a.id === id); }
+function getAanm(id) { return db.aanmeldingen.find(a => a.id === id); }
+
+function dlNaam(id) {
+  const d = getDl(id);
+  return d ? `${d.voornaam} ${d.achternaam}` : '–';
+}
+function actNaam(id) {
+  const a = getAct(id);
+  return a ? a.naam : '–';
+}
+function initialen(vn, an) {
+  return ((vn||'')[0]||'') + ((an||'')[0]||'');
+}
+function formatDatum(iso) {
+  if (!iso) return '–';
+  const d = new Date(iso);
+  return d.toLocaleDateString('nl-NL', { day:'numeric', month:'long', year:'numeric' });
+}
+function formatDatumKort(iso) {
+  if (!iso) return '–';
+  const d = new Date(iso + 'T00:00:00');
+  return d.toLocaleDateString('nl-NL', { day:'numeric', month:'short' });
+}
+function dagVanMaand(iso) {
+  if (!iso) return '?';
+  return new Date(iso + 'T00:00:00').getDate();
+}
+function maand3(iso) {
+  if (!iso) return '';
+  return new Date(iso + 'T00:00:00').toLocaleDateString('nl-NL', { month:'short' });
+}
+
+function aanmeldingenVoorActiviteit(actId) {
+  return db.aanmeldingen.filter(a => a.activiteitId === actId);
+}
+function bevestigdAantal(actId) {
+  return db.aanmeldingen.filter(a => a.activiteitId === actId && a.status === 'bevestigd').length;
+}
+function wachtlijstAantal(actId) {
+  return db.aanmeldingen.filter(a => a.activiteitId === actId && a.status === 'wachtlijst').length;
+}
+
+function capaciteitKleur(pct) {
+  if (pct >= 100) return 'rood';
+  if (pct >= 75) return 'geel';
+  return '';
+}
+
+function actStatusBadge(act) {
+  const bez = bevestigdAantal(act.id);
+  if (act.status === 'gesloten' || act.status === 'geannuleerd') return `<span class="badge ${act.status}">${act.status}</span>`;
+  if (bez >= act.maxDeelnemers) return '<span class="badge vol">Vol</span>';
+  if (bez >= act.maxDeelnemers * 0.75) return '<span class="badge bijna-vol">Bijna vol</span>';
+  return '<span class="badge open">Open</span>';
+}
+
+function statusBadge(status) {
+  const labels = { nieuw:'Nieuw', bevestigd:'Bevestigd', wachtlijst:'Wachtlijst', afgemeld:'Afgemeld', aanwezig:'Aanwezig', 'no-show':'No-show', geannuleerd:'Geannuleerd' };
+  return `<span class="badge ${status}">${labels[status]||status}</span>`;
+}
+
+function bronLabel(bron) {
+  const map = { website:'🌐 Website', email:'✉️ E-mail', handmatig:'✍️ Handmatig', telefoon:'📞 Telefoon', whatsapp:'💬 WhatsApp' };
+  return map[bron] || bron;
+}
+
+// ═══════════════════════════════════════════════
+// DASHBOARD
+// ═══════════════════════════════════════════════
+function renderDashboard() {
+  const totaleDl = db.deelnemers.length;
+  const totaleBevest = db.aanmeldingen.filter(a => a.status === 'bevestigd').length;
+  const totaleWacht = db.aanmeldingen.filter(a => a.status === 'wachtlijst').length;
+  const totaleNieuw = db.aanmeldingen.filter(a => a.status === 'nieuw').length;
+
+  const aankomend = [...db.activiteiten]
+    .filter(a => a.datum >= new Date().toISOString().split('T')[0] && a.status !== 'geannuleerd')
+    .sort((a,b) => a.datum.localeCompare(b.datum))
+    .slice(0, 5);
+
+  let aankomendHtml = aankomend.length === 0
+    ? '<div class="empty-state"><div class="emoji">📅</div><p>Geen aankomende activiteiten.</p></div>'
+    : aankomend.map(act => {
+        const bez = bevestigdAantal(act.id);
+        const pct = act.maxDeelnemers ? Math.round(bez / act.maxDeelnemers * 100) : 0;
+        const kleur = capaciteitKleur(pct);
+        return `
+        <div class="activiteit-card" onclick="navigeer('activiteiten')" style="cursor:pointer">
+          <div class="act-datum">
+            <div class="dag">${dagVanMaand(act.datum)}</div>
+            <div class="mnd">${maand3(act.datum)}</div>
+          </div>
+          <div class="act-info">
+            <h3>${esc(act.naam)}</h3>
+            <div class="act-meta">
+              <span>🕐 ${act.tijd}</span>
+              <span>📍 ${esc(act.locatie)}</span>
+              <span class="badge ${act.type}">${act.type === 'reeks' ? 'Reeks' : 'Losse avond'}</span>
+              ${actStatusBadge(act)}
+            </div>
+            <div style="margin-top:8px" class="act-cap">
+              <div class="progress-bar" style="flex:1">
+                <div class="progress-fill ${kleur}" style="width:${Math.min(pct,100)}%"></div>
+              </div>
+              <span class="text-muted">${bez}/${act.maxDeelnemers}</span>
+              ${wachtlijstAantal(act.id) > 0 ? `<span class="badge wachtlijst">+${wachtlijstAantal(act.id)} wl</span>` : ''}
+            </div>
+          </div>
+        </div>`;
+      }).join('');
+
+  const recenteAanm = [...db.aanmeldingen]
+    .sort((a,b) => b.aangemeld.localeCompare(a.aangemeld))
+    .slice(0,6);
+
+  let recentHtml = recenteAanm.length === 0
+    ? '<p class="text-muted">Nog geen aanmeldingen.</p>'
+    : `<table><thead><tr><th>Deelnemer</th><th>Activiteit</th><th>Status</th><th>Aangemeld</th></tr></thead><tbody>
+      ${recenteAanm.map(a => {
+        const dl = getDl(a.deelnemerId);
+        return `<tr>
+          <td><span class="dl-initials">${initialen(dl?.voornaam,dl?.achternaam)}</span> ${esc(dl?.voornaam||'')} ${esc(dl?.achternaam||'')}</td>
+          <td>${esc(actNaam(a.activiteitId))}</td>
+          <td>${statusBadge(a.status)}</td>
+          <td class="text-muted">${formatDatum(a.aangemeld)}</td>
+        </tr>`;
+      }).join('')}
+    </tbody></table>`;
+
+  return `
+    <div class="stat-grid">
+      <div class="stat-card">
+        <div class="label">Deelnemers</div>
+        <div class="value">${totaleDl}</div>
+        <div class="sub">in database</div>
+      </div>
+      <div class="stat-card groen">
+        <div class="label">Bevestigd</div>
+        <div class="value">${totaleBevest}</div>
+        <div class="sub">actieve aanmeldingen</div>
+      </div>
+      <div class="stat-card geel">
+        <div class="label">Wachtlijst</div>
+        <div class="value">${totaleWacht}</div>
+        <div class="sub">wachtend op plek</div>
+      </div>
+      <div class="stat-card oranje">
+        <div class="label">Nieuw</div>
+        <div class="value">${totaleNieuw}</div>
+        <div class="sub">te verwerken</div>
+      </div>
+      <div class="stat-card">
+        <div class="label">Activiteiten</div>
+        <div class="value">${db.activiteiten.length}</div>
+        <div class="sub">${db.activiteiten.filter(a=>a.datum>=new Date().toISOString().split('T')[0]).length} aankomend</div>
+      </div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;align-items:start">
+      <div class="card">
+        <div class="card-title">📅 Aankomende activiteiten</div>
+        ${aankomendHtml}
+        <button class="btn btn-outline btn-sm mt-16" onclick="navigeer('activiteiten')">Alle activiteiten →</button>
+      </div>
+      <div class="card">
+        <div class="card-title">📋 Recente aanmeldingen</div>
+        <div class="tbl-wrap">${recentHtml}</div>
+        <button class="btn btn-outline btn-sm mt-16" onclick="navigeer('aanmeldingen')">Alle aanmeldingen →</button>
+      </div>
+    </div>
+  `;
+}
+
+// ═══════════════════════════════════════════════
+// ACTIVITEITEN
+// ═══════════════════════════════════════════════
+function renderActiviteiten() {
+  const gesorteerd = [...db.activiteiten].sort((a,b) => a.datum.localeCompare(b.datum));
+
+  const acties = `<button class="btn btn-primary" onclick="openNieuweActiviteit()">+ Activiteit</button>`;
+  setTimeout(() => { document.getElementById('topbar-acties').innerHTML = acties; }, 0);
+
+  if (gesorteerd.length === 0) {
+    return `<div class="card"><div class="empty-state"><div class="emoji">📅</div><p>Nog geen activiteiten aangemaakt.</p><button class="btn btn-primary mt-16" onclick="openNieuweActiviteit()">+ Eerste activiteit</button></div></div>`;
+  }
+
+  return `
+    <div class="card">
+      <div class="tbl-wrap">
+      <table>
+        <thead><tr>
+          <th>Datum</th><th>Naam</th><th>Type</th><th>Locatie</th>
+          <th>Capaciteit</th><th>Status</th><th style="text-align:right">Acties</th>
+        </tr></thead>
+        <tbody>
+        ${gesorteerd.map(act => {
+          const bez = bevestigdAantal(act.id);
+          const wl  = wachtlijstAantal(act.id);
+          const pct = act.maxDeelnemers ? Math.round(bez/act.maxDeelnemers*100) : 0;
+          return `<tr>
+            <td><strong>${formatDatumKort(act.datum)}</strong><br><span class="text-muted">${act.tijd}</span></td>
+            <td>
+              <strong>${esc(act.naam)}</strong>
+              ${act.reeksNaam ? `<br><span class="text-muted">${esc(act.reeksNaam)}</span>` : ''}
+            </td>
+            <td><span class="badge ${act.type}">${act.type==='reeks'?'Reeks':'Losse avond'}</span></td>
+            <td>${esc(act.locatie)}</td>
+            <td>
+              <div class="act-cap" style="gap:8px;min-width:120px">
+                <div class="progress-bar" style="width:80px">
+                  <div class="progress-fill ${capaciteitKleur(pct)}" style="width:${Math.min(pct,100)}%"></div>
+                </div>
+                <span class="text-muted">${bez}/${act.maxDeelnemers}</span>
+                ${wl>0?`<span class="badge wachtlijst">+${wl}</span>`:''}
+              </div>
+            </td>
+            <td>${actStatusBadge(act)}</td>
+            <td>
+              <div class="td-actions">
+                <button class="btn btn-ghost btn-sm" onclick="openActiviteitDetail('${act.id}')">Detail</button>
+                <button class="btn btn-ghost btn-sm" onclick="openBewerkActiviteit('${act.id}')">✏️</button>
+                <button class="btn btn-danger btn-sm" onclick="verwijderActiviteit('${act.id}')">🗑</button>
+              </div>
+            </td>
+          </tr>`;
+        }).join('')}
+        </tbody>
+      </table>
+      </div>
+    </div>
+  `;
+}
+
+function openNieuweActiviteit() {
+  openModal('Nieuwe activiteit', activiteitFormHtml(null), [
+    { label: 'Annuleren', cls: 'btn-ghost', action: 'sluitModal()' },
+    { label: 'Opslaan', cls: 'btn-primary', action: 'slaActiviteitOp()' }
+  ]);
+}
+
+function openBewerkActiviteit(id) {
+  const act = getAct(id);
+  if (!act) return;
+  openModal('Activiteit bewerken', activiteitFormHtml(act), [
+    { label: 'Annuleren', cls: 'btn-ghost', action: 'sluitModal()' },
+    { label: 'Opslaan', cls: 'btn-primary', action: `slaActiviteitOp('${id}')` }
+  ]);
+}
+
+function activiteitFormHtml(act) {
+  const v = act || { naam:'', type:'losse-avond', reeksNaam:'', datum:'', tijd:'20:00', locatie:'Zincafé Zweeloo', maxDeelnemers:10, status:'open', omschrijving:'' };
+  return `
+    <div class="form-row cols-2">
+      <div class="form-group" style="grid-column:1/-1">
+        <label>Naam activiteit *</label>
+        <input id="f-naam" value="${esc(v.naam)}" placeholder="bijv. Filosofie van A tot Z — avond 1">
+      </div>
+    </div>
+    <div class="form-row cols-2">
+      <div class="form-group">
+        <label>Type</label>
+        <select id="f-type">
+          <option value="losse-avond" ${v.type==='losse-avond'?'selected':''}>Losse avond</option>
+          <option value="reeks" ${v.type==='reeks'?'selected':''}>Onderdeel van reeks</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Naam reeks (bij type reeks)</label>
+        <input id="f-reeks" value="${esc(v.reeksNaam)}" placeholder="bijv. Filosofie van A tot Z">
+      </div>
+    </div>
+    <div class="form-row cols-3">
+      <div class="form-group">
+        <label>Datum *</label>
+        <input id="f-datum" type="date" value="${v.datum}">
+      </div>
+      <div class="form-group">
+        <label>Tijdstip</label>
+        <input id="f-tijd" value="${v.tijd}" placeholder="20:00">
+      </div>
+      <div class="form-group">
+        <label>Max. deelnemers</label>
+        <input id="f-max" type="number" value="${v.maxDeelnemers}" min="1">
+      </div>
+    </div>
+    <div class="form-row cols-2">
+      <div class="form-group">
+        <label>Locatie</label>
+        <input id="f-locatie" value="${esc(v.locatie)}">
+      </div>
+      <div class="form-group">
+        <label>Status</label>
+        <select id="f-status">
+          <option value="open" ${v.status==='open'?'selected':''}>Open</option>
+          <option value="gesloten" ${v.status==='gesloten'?'selected':''}>Gesloten voor aanmelding</option>
+          <option value="geannuleerd" ${v.status==='geannuleerd'?'selected':''}>Geannuleerd</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Omschrijving</label>
+        <textarea id="f-omschr">${esc(v.omschrijving)}</textarea>
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Parallelle groepen (komma-gescheiden, bijv. Groep 1, Groep 2)</label>
+        <input id="f-groepen" value="${(v.groepen||[]).map(g=>g.naam).join(', ')}" placeholder="Groep 1, Groep 2">
+        <span class="form-hint">Laat leeg als er geen aparte groepen zijn.</span>
+      </div>
+    </div>
+  `;
+}
+
+function maakGroepenVanInput(invoer, bestaandeGroepen = [], max = 10) {
+  return invoer.split(',').map(g => g.trim()).filter(Boolean).map(naam => {
+    const bestaand = bestaandeGroepen.find(bg => bg.naam === naam);
+    return bestaand ? { ...bestaand, max } : { id: uid(), naam, max };
+  });
+}
+
+function bevestigdAantalVoorGroep(actId, groepId) {
+  return db.aanmeldingen.filter(a =>
+    a.activiteitId === actId && a.groepId === groepId &&
+    ['bevestigd','aanwezig'].includes(a.status)
+  ).length;
+}
+
+function isGroepVol(actId, groepId) {
+  const act = getAct(actId);
+  if (!act) return true;
+  if (groepId) {
+    const groep = act.groepen?.find(g => g.id === groepId);
+    if (groep) return bevestigdAantalVoorGroep(actId, groepId) >= groep.max;
+  }
+  return bevestigdAantal(actId) >= act.maxDeelnemers;
+}
+
+function bestaatAanmelding(dlId, actId) {
+  return db.aanmeldingen.some(a =>
+    a.deelnemerId === dlId && a.activiteitId === actId &&
+    !['afgemeld','geannuleerd'].includes(a.status)
+  );
+}
+
+function slaActiviteitOp(bestaandId) {
+  const naam   = document.getElementById('f-naam').value.trim();
+  const datum  = document.getElementById('f-datum').value;
+  if (!naam || !datum) { toast('Vul naam en datum in.', 'fout'); return; }
+
+  const groepenTekst = document.getElementById('f-groepen').value;
+  const maxDl = parseInt(document.getElementById('f-max').value)||10;
+
+  if (bestaandId) {
+    const idx = db.activiteiten.findIndex(a => a.id === bestaandId);
+    const bestaand = db.activiteiten[idx];
+    const groepen = groepenTekst
+      ? maakGroepenVanInput(groepenTekst, bestaand.groepen || [], maxDl)
+      : (bestaand.groepen || []);
+    db.activiteiten[idx] = { ...bestaand, naam, datum,
+      type:          document.getElementById('f-type').value,
+      reeksNaam:     document.getElementById('f-reeks').value.trim(),
+      tijd:          document.getElementById('f-tijd').value,
+      locatie:       document.getElementById('f-locatie').value.trim(),
+      maxDeelnemers: maxDl,
+      status:        document.getElementById('f-status').value,
+      omschrijving:  document.getElementById('f-omschr').value.trim(),
+      groepen,
+    };
+    toast('Activiteit bijgewerkt.', 'succes');
+  } else {
+    const groepen = groepenTekst ? maakGroepenVanInput(groepenTekst, [], maxDl) : [];
+    db.activiteiten.push({ id: uid(), naam, datum,
+      type:          document.getElementById('f-type').value,
+      reeksNaam:     document.getElementById('f-reeks').value.trim(),
+      tijd:          document.getElementById('f-tijd').value,
+      locatie:       document.getElementById('f-locatie').value.trim(),
+      maxDeelnemers: maxDl,
+      status:        document.getElementById('f-status').value,
+      omschrijving:  document.getElementById('f-omschr').value.trim(),
+      groepen, reeksId: null, aangemaakt: nu(),
+    });
+    toast('Activiteit aangemaakt.', 'succes');
+  }
+  slaOp(); sluitModal(); navigeer('activiteiten');
+}
+
+function verwijderActiviteit(id) {
+  if (!confirm('Activiteit en alle bijbehorende aanmeldingen verwijderen?')) return;
+  db.activiteiten = db.activiteiten.filter(a => a.id !== id);
+  db.aanmeldingen = db.aanmeldingen.filter(a => a.activiteitId !== id);
+  slaOp(); navigeer('activiteiten'); toast('Activiteit verwijderd.', 'succes');
+}
+
+function openActiviteitDetail(actId) {
+  const act = getAct(actId);
+  if (!act) return;
+  const aanm = aanmeldingenVoorActiviteit(actId);
+  const bezet = aanm.filter(a=>a.status==='bevestigd');
+  const wacht = aanm.filter(a=>a.status==='wachtlijst');
+  const nieuw  = aanm.filter(a=>a.status==='nieuw');
+
+  let groepenHtml = '';
+  if (act.groepen && act.groepen.length) {
+    groepenHtml = act.groepen.map(g => {
+      const grpAanm = bezet.filter(a => a.groepId === g.id);
+      return `<div class="mt-8"><strong>${esc(g.naam)}</strong> (${grpAanm.length}/${g.max})
+        <div style="margin-top:4px">
+          ${grpAanm.map(a => { const dl = getDl(a.deelnemerId); return `<span style="display:inline-block;margin:2px 4px 2px 0;background:var(--blauw-licht);padding:2px 8px;border-radius:12px;font-size:12px">${esc(dl?.voornaam||'')} ${esc(dl?.achternaam||'')}</span>`; }).join('')||'<span class="text-muted">Niemand ingedeeld.</span>'}
+        </div>
+      </div>`;
+    }).join('');
+  }
+
+  const html = `
+    <div class="flex gap-8 mb-16">
+      ${actStatusBadge(act)}
+      <span class="badge ${act.type}">${act.type==='reeks'?'Reeks':'Losse avond'}</span>
+    </div>
+    <div class="form-row cols-2" style="margin-bottom:0">
+      <div><span class="text-muted">Datum</span><br><strong>${formatDatum(act.datum)} · ${act.tijd}</strong></div>
+      <div><span class="text-muted">Locatie</span><br><strong>${esc(act.locatie)}</strong></div>
+      <div><span class="text-muted">Bevestigd</span><br><strong style="color:var(--groen)">${bezet.length} / ${act.maxDeelnemers}</strong></div>
+      <div><span class="text-muted">Wachtlijst</span><br><strong style="color:var(--geel)">${wacht.length}</strong></div>
+      ${nieuw.length?`<div><span class="text-muted">Nieuw (te verwerken)</span><br><strong style="color:var(--oranje)">${nieuw.length}</strong></div>`:``}
+    </div>
+    ${act.omschrijving ? `<p style="margin-top:12px;color:var(--tekst-zacht)">${esc(act.omschrijving)}</p>` : ''}
+    <hr class="divider">
+    <strong>Groepsindeling</strong>
+    ${groepenHtml || '<p class="text-muted mt-8">Geen parallelle groepen.</p>'}
+    <hr class="divider">
+    <div class="flex gap-8">
+      <strong>Alle aanmeldingen</strong>
+      <button class="btn btn-ghost btn-sm ml-auto" onclick="openNieuweAanmelding('${actId}')">+ Aanmelding</button>
+    </div>
+    <div class="tbl-wrap mt-8">
+      <table>
+        <thead><tr><th>Deelnemer</th><th>Groep</th><th>Status</th><th>Bron</th><th>Acties</th></tr></thead>
+        <tbody>
+        ${aanm.length === 0 ? `<tr><td colspan="5" class="text-muted" style="text-align:center;padding:16px">Nog geen aanmeldingen.</td></tr>` :
+          aanm.map(a => {
+            const dl = getDl(a.deelnemerId);
+            const grp = act.groepen?.find(g => g.id === a.groepId);
+            return `<tr>
+              <td>${esc(dl?.voornaam||'')} ${esc(dl?.achternaam||'')}<br><span class="text-muted">${esc(dl?.email||'')}</span></td>
+              <td>${grp ? esc(grp.naam) : '–'}</td>
+              <td>${statusBadge(a.status)}</td>
+              <td class="text-muted">${bronLabel(a.bron)}</td>
+              <td>
+                <select class="btn btn-ghost btn-sm" onchange="wijzigStatus('${a.id}', this.value);openActiviteitDetail('${actId}')" style="padding:4px 6px;font-size:11px">
+                  <option value="">— status —</option>
+                  ${['nieuw','bevestigd','wachtlijst','afgemeld','aanwezig','no-show','geannuleerd'].map(s=>`<option value="${s}" ${s===a.status?'selected':''}>${s}</option>`).join('')}
+                </select>
+                <button class="btn btn-ghost btn-sm" onclick="sluitModal();openBewerkAanmelding('${a.id}')">✏️</button>
+                <button class="btn btn-danger btn-sm" onclick="verwijderAanmelding('${a.id}');openActiviteitDetail('${actId}')">🗑</button>
+              </td>
+            </tr>`;
+          }).join('')}
+        </tbody>
+      </table>
+    </div>
+  `;
+  openModal(esc(act.naam), html, [
+    { label: 'Sluiten', cls: 'btn-ghost', action: 'sluitModal()' },
+    { label: '✏️ Bewerken', cls: 'btn-outline', action: `sluitModal();openBewerkActiviteit('${actId}')` },
+    { label: '✅ Presentielijst', cls: 'btn-primary', action: `sluitModal();openPresentieVoorActiviteit('${actId}')` },
+  ], true);
+}
+
+// ═══════════════════════════════════════════════
+// DEELNEMERS
+// ═══════════════════════════════════════════════
+let dlFilter = '';
+let dlSorteer = 'naam';
+
+function renderDeelnemers() {
+  const acties = `<button class="btn btn-primary" onclick="openNieuweDeelnemer()">+ Deelnemer</button>`;
+  setTimeout(() => { document.getElementById('topbar-acties').innerHTML = acties; }, 0);
+
+  let lijst = [...db.deelnemers];
+  if (dlFilter) {
+    const q = dlFilter.toLowerCase();
+    lijst = lijst.filter(d =>
+      (d.voornaam+' '+d.achternaam).toLowerCase().includes(q) ||
+      d.email.toLowerCase().includes(q) ||
+      (d.telefoon||'').includes(q) ||
+      (d.woonplaats||'').toLowerCase().includes(q)
+    );
+  }
+  lijst.sort((a,b) => {
+    if (dlSorteer==='naam') return (a.achternaam+a.voornaam).localeCompare(b.achternaam+b.voornaam);
+    if (dlSorteer==='email') return a.email.localeCompare(b.email);
+    if (dlSorteer==='datum') return b.aangemaakt.localeCompare(a.aangemaakt);
+    return 0;
+  });
+
+  return `
+    <div class="filter-bar">
+      <div class="search-wrap">
+        <span class="search-icon">🔍</span>
+        <input type="text" placeholder="Zoek op naam, e-mail, woonplaats…" value="${esc(dlFilter)}"
+          oninput="dlFilter=this.value;navigeer('deelnemers')" style="padding-left:32px;width:260px">
+      </div>
+      <select onchange="dlSorteer=this.value;navigeer('deelnemers')" class="btn btn-ghost" style="font-size:13px;padding:7px 10px">
+        <option value="naam" ${dlSorteer==='naam'?'selected':''}>Sorteer: Naam</option>
+        <option value="email" ${dlSorteer==='email'?'selected':''}>Sorteer: E-mail</option>
+        <option value="datum" ${dlSorteer==='datum'?'selected':''}>Sorteer: Nieuwst</option>
+      </select>
+      <span class="text-muted">${lijst.length} van ${db.deelnemers.length}</span>
+    </div>
+    <div class="card">
+      <div class="tbl-wrap">
+      <table>
+        <thead><tr>
+          <th></th><th>Naam</th><th>E-mail</th><th>Telefoon</th><th>Woonplaats</th>
+          <th>Toestemming</th><th>Aanmeldingen</th><th style="text-align:right">Acties</th>
+        </tr></thead>
+        <tbody>
+        ${lijst.length === 0 ? `<tr><td colspan="8" class="text-muted" style="text-align:center;padding:24px">Geen deelnemers gevonden.</td></tr>` :
+          lijst.map(dl => {
+            const aanm = db.aanmeldingen.filter(a => a.deelnemerId === dl.id);
+            return `<tr>
+              <td><span class="dl-initials">${initialen(dl.voornaam,dl.achternaam)}</span></td>
+              <td><strong>${esc(dl.voornaam)} ${esc(dl.achternaam)}</strong></td>
+              <td><a href="mailto:${esc(dl.email)}" style="color:var(--blauw-mid)">${esc(dl.email)}</a></td>
+              <td>${esc(dl.telefoon||'–')}</td>
+              <td>${esc(dl.woonplaats||'–')}</td>
+              <td>
+                ${dl.toestemmingEmail ? '<span title="E-mail">✉️</span>' : ''}
+                ${dl.toestemmingWhatsApp ? '<span title="WhatsApp">💬</span>' : ''}
+                ${!dl.toestemmingEmail && !dl.toestemmingWhatsApp ? '<span class="text-muted">–</span>' : ''}
+              </td>
+              <td>
+                <span class="badge nieuw" style="cursor:pointer" onclick="filterAanmeldingenOpDl('${dl.id}')">${aanm.length}</span>
+              </td>
+              <td>
+                <div class="td-actions">
+                  <button class="btn btn-ghost btn-sm" onclick="openDeelnemerDetail('${dl.id}')">Detail</button>
+                  <button class="btn btn-ghost btn-sm" onclick="openBewerkDeelnemer('${dl.id}')">✏️</button>
+                  <button class="btn btn-danger btn-sm" onclick="verwijderDeelnemer('${dl.id}')">🗑</button>
+                </div>
+              </td>
+            </tr>`;
+          }).join('')}
+        </tbody>
+      </table>
+      </div>
+    </div>
+  `;
+}
+
+function openNieuweDeelnemer() {
+  openModal('Nieuwe deelnemer', deelnemerFormHtml(null), [
+    { label: 'Annuleren', cls: 'btn-ghost', action: 'sluitModal()' },
+    { label: 'Opslaan', cls: 'btn-primary', action: 'slaDeelnemerOp()' }
+  ]);
+}
+function openBewerkDeelnemer(id) {
+  const dl = getDl(id);
+  if (!dl) return;
+  openModal('Deelnemer bewerken', deelnemerFormHtml(dl), [
+    { label: 'Annuleren', cls: 'btn-ghost', action: 'sluitModal()' },
+    { label: 'Opslaan', cls: 'btn-primary', action: `slaDeelnemerOp('${id}')` }
+  ]);
+}
+function deelnemerFormHtml(dl) {
+  const v = dl || { voornaam:'', achternaam:'', email:'', telefoon:'', woonplaats:'', notities:'', toestemmingEmail:true, toestemmingWhatsApp:false };
+  return `
+    <div class="form-row cols-2">
+      <div class="form-group">
+        <label>Voornaam *</label>
+        <input id="d-vn" value="${esc(v.voornaam)}">
+      </div>
+      <div class="form-group">
+        <label>Achternaam *</label>
+        <input id="d-an" value="${esc(v.achternaam)}">
+      </div>
+    </div>
+    <div class="form-row cols-2">
+      <div class="form-group">
+        <label>E-mailadres *</label>
+        <input id="d-email" type="email" value="${esc(v.email)}">
+      </div>
+      <div class="form-group">
+        <label>Telefoon / WhatsApp</label>
+        <input id="d-tel" value="${esc(v.telefoon||'')}">
+      </div>
+    </div>
+    <div class="form-row cols-2">
+      <div class="form-group">
+        <label>Woonplaats</label>
+        <input id="d-wpl" value="${esc(v.woonplaats||'')}">
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Notities / bijzonderheden</label>
+        <textarea id="d-notities">${esc(v.notities||'')}</textarea>
+      </div>
+    </div>
+    <div class="form-row cols-2">
+      <div class="form-group">
+        <label style="display:flex;align-items:center;gap:8px;cursor:pointer">
+          <input type="checkbox" id="d-email-ok" ${v.toestemmingEmail?'checked':''}>
+          Toestemming e-mail
+        </label>
+      </div>
+      <div class="form-group">
+        <label style="display:flex;align-items:center;gap:8px;cursor:pointer">
+          <input type="checkbox" id="d-wa-ok" ${v.toestemmingWhatsApp?'checked':''}>
+          Toestemming WhatsApp
+        </label>
+      </div>
+    </div>
+  `;
+}
+function slaDeelnemerOp(bestaandId) {
+  const vn = document.getElementById('d-vn').value.trim();
+  const an = document.getElementById('d-an').value.trim();
+  const email = document.getElementById('d-email').value.trim();
+  if (!vn || !an || !email) { toast('Voornaam, achternaam en e-mail zijn verplicht.', 'fout'); return; }
+
+  const data = { voornaam:vn, achternaam:an, email,
+    telefoon: document.getElementById('d-tel').value.trim(),
+    woonplaats: document.getElementById('d-wpl').value.trim(),
+    notities: document.getElementById('d-notities').value.trim(),
+    toestemmingEmail: document.getElementById('d-email-ok').checked,
+    toestemmingWhatsApp: document.getElementById('d-wa-ok').checked,
+  };
+  if (bestaandId) {
+    const idx = db.deelnemers.findIndex(d => d.id === bestaandId);
+    db.deelnemers[idx] = { ...db.deelnemers[idx], ...data };
+    toast('Deelnemer bijgewerkt.', 'succes');
+  } else {
+    db.deelnemers.push({ id: uid(), ...data, aangemaakt: nu() });
+    toast('Deelnemer toegevoegd.', 'succes');
+  }
+  slaOp(); sluitModal(); navigeer('deelnemers');
+}
+function verwijderDeelnemer(id) {
+  const dl = getDl(id);
+  if (!confirm(`${dl?.voornaam} ${dl?.achternaam} verwijderen? Dit verwijdert ook alle aanmeldingen van deze persoon.`)) return;
+  db.deelnemers = db.deelnemers.filter(d => d.id !== id);
+  db.aanmeldingen = db.aanmeldingen.filter(a => a.deelnemerId !== id);
+  slaOp(); navigeer('deelnemers'); toast('Deelnemer verwijderd.', 'succes');
+}
+function openDeelnemerDetail(id) {
+  const dl = getDl(id);
+  if (!dl) return;
+  const aanm = db.aanmeldingen.filter(a => a.deelnemerId === id);
+  const html = `
+    <div class="flex gap-8 mb-16">
+      <span class="dl-initials" style="width:52px;height:52px;font-size:18px">${initialen(dl.voornaam,dl.achternaam)}</span>
+      <div>
+        <strong style="font-size:16px">${esc(dl.voornaam)} ${esc(dl.achternaam)}</strong><br>
+        <a href="mailto:${esc(dl.email)}" style="color:var(--blauw-mid)">${esc(dl.email)}</a>
+        ${dl.telefoon ? ` · ${esc(dl.telefoon)}` : ''}
+        ${dl.woonplaats ? ` · ${esc(dl.woonplaats)}` : ''}
+      </div>
+    </div>
+    ${dl.notities ? `<div class="card" style="background:var(--geel-licht);border-color:#f0d88a;margin-bottom:12px"><strong>Notities:</strong> ${esc(dl.notities)}</div>` : ''}
+    <div class="flex gap-8 mb-16">
+      ${dl.toestemmingEmail ? '<span class="badge bevestigd">✉️ E-mail OK</span>' : '<span class="badge afgemeld">✉️ Geen toestemming</span>'}
+      ${dl.toestemmingWhatsApp ? '<span class="badge bevestigd">💬 WhatsApp OK</span>' : '<span class="badge afgemeld">💬 Geen toestemming</span>'}
+    </div>
+    <hr class="divider">
+    <strong>Aanmeldingshistorie (${aanm.length})</strong>
+    <div class="tbl-wrap mt-8">
+      <table><thead><tr><th>Activiteit</th><th>Status</th><th>Groep</th><th>Aangemeld</th></tr></thead>
+      <tbody>${aanm.length===0?`<tr><td colspan="4" class="text-muted" style="text-align:center;padding:12px">Geen aanmeldingen.</td></tr>`:
+        aanm.map(a => {
+          const act = getAct(a.activiteitId);
+          const grp = act?.groepen?.find(g => g.id === a.groepId);
+          return `<tr><td>${esc(act?.naam||'–')}<br><span class="text-muted">${formatDatumKort(act?.datum)}</span></td><td>${statusBadge(a.status)}</td><td>${grp?esc(grp.naam):'–'}</td><td class="text-muted">${formatDatum(a.aangemeld)}</td></tr>`;
+        }).join('')}</tbody></table>
+    </div>
+  `;
+  openModal(`${dl.voornaam} ${dl.achternaam}`, html, [
+    { label: 'Sluiten', cls:'btn-ghost', action:'sluitModal()' },
+    { label: '✏️ Bewerken', cls:'btn-outline', action:`sluitModal();openBewerkDeelnemer('${id}')` },
+  ], true);
+}
+function filterAanmeldingenOpDl(dlId) {
+  aanmFilter.deelnemerId = dlId;
+  navigeer('aanmeldingen');
+}
+
+// ═══════════════════════════════════════════════
+// AANMELDINGEN
+// ═══════════════════════════════════════════════
+let aanmFilter = { status:'', activiteitId:'', deelnemerId:'', zoek:'' };
+let aanmSorteer = 'datum';
+
+function renderAanmeldingen() {
+  const acties = `
+    <button class="btn btn-outline" onclick="openBulkAanmelding()">👥 Bulk aanmelding</button>
+    <button class="btn btn-primary" onclick="openNieuweAanmelding()">+ Aanmelding</button>
+  `;
+  setTimeout(() => { document.getElementById('topbar-acties').innerHTML = acties; }, 0);
+
+  let lijst = [...db.aanmeldingen];
+  if (aanmFilter.status)       lijst = lijst.filter(a => a.status === aanmFilter.status);
+  if (aanmFilter.activiteitId) lijst = lijst.filter(a => a.activiteitId === aanmFilter.activiteitId);
+  if (aanmFilter.deelnemerId)  lijst = lijst.filter(a => a.deelnemerId === aanmFilter.deelnemerId);
+  if (aanmFilter.zoek) {
+    const q = aanmFilter.zoek.toLowerCase();
+    lijst = lijst.filter(a => {
+      const dl = getDl(a.deelnemerId);
+      return (dl?.voornaam+' '+dl?.achternaam).toLowerCase().includes(q) || dl?.email.toLowerCase().includes(q);
+    });
+  }
+  lijst.sort((a,b) => b.aangemeld.localeCompare(a.aangemeld));
+
+  const statusOpties = ['','nieuw','bevestigd','wachtlijst','afgemeld','aanwezig','no-show','geannuleerd'];
+  const filterDlNaam = aanmFilter.deelnemerId ? dlNaam(aanmFilter.deelnemerId) : '';
+
+  return `
+    <div class="filter-bar">
+      <div class="search-wrap">
+        <span class="search-icon">🔍</span>
+        <input type="text" placeholder="Zoek deelnemer…" value="${esc(aanmFilter.zoek)}"
+          oninput="aanmFilter.zoek=this.value;navigeer('aanmeldingen')" style="padding-left:32px;width:200px">
+      </div>
+      <select onchange="aanmFilter.status=this.value;navigeer('aanmeldingen')" class="btn btn-ghost" style="font-size:13px;padding:7px 10px">
+        ${statusOpties.map(s => `<option value="${s}" ${aanmFilter.status===s?'selected':''}>${s||'Alle statussen'}</option>`).join('')}
+      </select>
+      <select onchange="aanmFilter.activiteitId=this.value;navigeer('aanmeldingen')" class="btn btn-ghost" style="font-size:13px;padding:7px 10px;max-width:220px">
+        <option value="">Alle activiteiten</option>
+        ${db.activiteiten.map(a => `<option value="${a.id}" ${aanmFilter.activiteitId===a.id?'selected':''}>${esc(a.naam)}</option>`).join('')}
+      </select>
+      ${filterDlNaam ? `<span class="badge nieuw" style="cursor:pointer" onclick="aanmFilter.deelnemerId='';navigeer('aanmeldingen')">👤 ${esc(filterDlNaam)} ✕</span>` : ''}
+      <span class="text-muted">${lijst.length} aanmeldingen</span>
+    </div>
+    <div id="bulk-toolbar" class="hidden" style="background:var(--blauw);color:white;border-radius:10px;padding:10px 16px;margin-bottom:10px;display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+      <strong id="bulk-teller" style="font-size:13px">0 geselecteerd</strong>
+      <div style="height:16px;width:1px;background:rgba(255,255,255,0.3)"></div>
+      <span style="font-size:12px;opacity:0.7">Indelen in groep:</span>
+      <select id="bulk-grp-keuze" style="font-size:12px;padding:4px 8px;border-radius:4px;border:none;background:rgba(255,255,255,0.15);color:white;min-width:100px">
+        <option value="">Geen</option>
+        ${db.activiteiten.flatMap(a=>(a.groepen||[]).map(g=>`<option value="${a.id}|${g.id}">${esc(a.naam.split('—')[0].trim())} › ${esc(g.naam)}</option>`)).join('')}
+      </select>
+      <button class="btn btn-sm" style="background:rgba(255,255,255,0.2);color:white;border:none" onclick="bulkGroepWijzigen()">Indelen</button>
+      <div style="height:16px;width:1px;background:rgba(255,255,255,0.3)"></div>
+      <span style="font-size:12px;opacity:0.7">Status:</span>
+      <select id="bulk-status-keuze" style="font-size:12px;padding:4px 8px;border-radius:4px;border:none;background:rgba(255,255,255,0.15);color:white">
+        ${['bevestigd','wachtlijst','afgemeld','nieuw'].map(s=>`<option value="${s}">${s}</option>`).join('')}
+      </select>
+      <button class="btn btn-sm" style="background:rgba(255,255,255,0.2);color:white;border:none" onclick="bulkStatusWijzigen()">Toepassen</button>
+      <div style="height:16px;width:1px;background:rgba(255,255,255,0.3)"></div>
+      <button class="btn btn-sm" style="background:rgba(255,255,255,0.1);color:white;border:1px solid rgba(255,255,255,0.3)" onclick="bulkEmailSelectie()">✉️ Mail selectie</button>
+      <button class="btn btn-sm" style="background:var(--rood);color:white;border:none;margin-left:auto" onclick="bulkVerwijderen()">🗑 Verwijderen</button>
+    </div>
+
+    <div class="card">
+      <div class="tbl-wrap">
+      <table>
+        <thead><tr>
+          <th style="width:32px"><input type="checkbox" id="bulk-alles" onchange="toggleAllesBulk(this)" title="Alles selecteren"></th>
+          <th>Deelnemer</th><th>Activiteit</th><th>Groep</th><th>Status</th><th>Bron</th><th>Aangemeld</th><th style="text-align:right">Acties</th>
+        </tr></thead>
+        <tbody>
+        ${lijst.length===0 ? `<tr><td colspan="8" class="text-muted" style="text-align:center;padding:24px">Geen aanmeldingen gevonden.</td></tr>` :
+          lijst.map(a => {
+            const dl  = getDl(a.deelnemerId);
+            const act = getAct(a.activiteitId);
+            const grp = act?.groepen?.find(g => g.id === a.groepId);
+            return `<tr>
+              <td><input type="checkbox" class="aanm-cb" value="${a.id}" onchange="updateBulkToolbar()"></td>
+              <td>
+                <span class="dl-initials">${initialen(dl?.voornaam,dl?.achternaam)}</span>
+                ${esc(dl?.voornaam||'')} ${esc(dl?.achternaam||'')}
+                <br><span class="text-muted">${esc(dl?.email||'')}</span>
+              </td>
+              <td>${esc(act?.naam||'–')}<br><span class="text-muted">${formatDatumKort(act?.datum)}</span></td>
+              <td>${grp ? esc(grp.naam) : '–'}</td>
+              <td>${statusBadge(a.status)}</td>
+              <td class="text-muted">${bronLabel(a.bron)}</td>
+              <td class="text-muted">${formatDatum(a.aangemeld)}</td>
+              <td>
+                <div class="td-actions">
+                  <button class="btn btn-ghost btn-sm" onclick="openBewerkAanmelding('${a.id}')">✏️</button>
+                  <button class="btn btn-danger btn-sm" onclick="verwijderAanmelding('${a.id}')">🗑</button>
+                </div>
+              </td>
+            </tr>`;
+          }).join('')}
+        </tbody>
+      </table>
+      </div>
+    </div>
+  `;
+}
+
+function aanmeldingFormHtml(voorActId, bestaand) {
+  // bestaand = aanmeldingsobject bij bewerken, null bij nieuw
+  const dlId  = bestaand?.deelnemerId || '';
+  const actId = bestaand?.activiteitId || voorActId || '';
+  const grpId = bestaand?.groepId || '';
+  const status= bestaand?.status || 'nieuw';
+  const bron  = bestaand?.bron   || 'handmatig';
+  const notities = bestaand?.notities || '';
+
+  const actGroepen = actId ? (getAct(actId)?.groepen || []) : [];
+
+  return `
+    <div class="form-row">
+      <div class="form-group">
+        <label>Deelnemer *</label>
+        <select id="a-dl" ${bestaand?'disabled':''}>
+          <option value="">— kies deelnemer —</option>
+          ${db.deelnemers.map(d => `<option value="${d.id}" ${d.id===dlId?'selected':''}>${esc(d.achternaam)}, ${esc(d.voornaam)} · ${esc(d.email)}</option>`).join('')}
+        </select>
+        ${!bestaand ? `<span class="form-hint"><a href="#" onclick="event.preventDefault();sluitModal();openNieuweDeelnemer()" style="color:var(--blauw-mid)">+ Nieuwe deelnemer aanmaken</a></span>` : ''}
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Activiteit *</label>
+        <select id="a-act" onchange="updateGroepSelect()" ${bestaand?'disabled':''}>
+          <option value="">— kies activiteit —</option>
+          ${db.activiteiten.map(a => `<option value="${a.id}" ${a.id===actId?'selected':''}>${esc(a.naam)} · ${formatDatumKort(a.datum)}</option>`).join('')}
+        </select>
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Groep</label>
+        <select id="a-grp">
+          <option value="">Geen / n.v.t.</option>
+          ${actGroepen.map(g => `<option value="${g.id}" ${g.id===grpId?'selected':''}>${esc(g.naam)}</option>`).join('')}
+        </select>
+      </div>
+    </div>
+    <div class="form-row cols-2">
+      <div class="form-group">
+        <label>Status</label>
+        <select id="a-status">
+          ${['nieuw','bevestigd','wachtlijst','afgemeld','aanwezig','no-show','geannuleerd'].map(s=>`<option value="${s}" ${s===status?'selected':''}>${s}</option>`).join('')}
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Bron</label>
+        <select id="a-bron">
+          ${['handmatig','website','email','telefoon','whatsapp'].map(b=>`<option value="${b}" ${b===bron?'selected':''}>${bronLabel(b)}</option>`).join('')}
+        </select>
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Notities</label>
+        <textarea id="a-notities">${esc(notities)}</textarea>
+      </div>
+    </div>
+  `;
+}
+
+function openNieuweAanmelding(voorActId) {
+  openModal('Nieuwe aanmelding', aanmeldingFormHtml(voorActId, null), [
+    { label:'Annuleren', cls:'btn-ghost', action:'sluitModal()' },
+    { label:'Opslaan', cls:'btn-primary', action:'slaAanmeldingOp()' }
+  ]);
+  if (voorActId) setTimeout(() => updateGroepSelect(), 50);
+}
+
+function openBewerkAanmelding(aanmId) {
+  const aanm = getAanm(aanmId);
+  if (!aanm) return;
+  openModal('Aanmelding bewerken', aanmeldingFormHtml(null, aanm), [
+    { label:'Annuleren', cls:'btn-ghost', action:'sluitModal()' },
+    { label:'Opslaan', cls:'btn-primary', action:`slaAanmeldingOp('${aanmId}')` }
+  ], false);
+}
+
+function openBulkAanmelding() {
+  const html = `
+    <p style="font-size:13px;color:var(--tekst-zacht);margin-bottom:16px">
+      Selecteer meerdere deelnemers tegelijk voor één activiteit. Handig bij groepsaanmeldingen of het importeren van een lijst.
+    </p>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Activiteit *</label>
+        <select id="bulk-act" onchange="updateBulkGroepSelect()">
+          <option value="">— kies activiteit —</option>
+          ${db.activiteiten.map(a => `<option value="${a.id}">${esc(a.naam)} · ${formatDatumKort(a.datum)}</option>`).join('')}
+        </select>
+      </div>
+    </div>
+    <div class="form-row cols-2">
+      <div class="form-group">
+        <label>Groep (voor iedereen)</label>
+        <select id="bulk-grp"><option value="">Geen / n.v.t.</option></select>
+      </div>
+      <div class="form-group">
+        <label>Status</label>
+        <select id="bulk-status">
+          <option value="bevestigd">Bevestigd</option>
+          <option value="nieuw">Nieuw</option>
+          <option value="wachtlijst">Wachtlijst</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Selecteer deelnemers *</label>
+        <div id="bulk-dl-lijst" style="max-height:260px;overflow-y:auto;border:1px solid var(--rand);border-radius:6px;padding:8px">
+          ${db.deelnemers
+            .sort((a,b) => a.achternaam.localeCompare(b.achternaam))
+            .map(d => `
+            <label style="display:flex;align-items:center;gap:8px;padding:5px 6px;cursor:pointer;border-radius:4px" onmouseover="this.style.background='var(--grijs-licht)'" onmouseout="this.style.background=''">
+              <input type="checkbox" class="bulk-dl-cb" value="${d.id}">
+              <span class="dl-initials" style="width:26px;height:26px;font-size:10px">${initialen(d.voornaam,d.achternaam)}</span>
+              <span><strong>${esc(d.achternaam)}, ${esc(d.voornaam)}</strong> <span class="text-muted">${esc(d.email)}</span></span>
+            </label>`).join('')}
+        </div>
+        <span class="form-hint mt-8">Deelnemers die al aangemeld zijn voor de gekozen activiteit worden overgeslagen.</span>
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Bron</label>
+        <select id="bulk-bron">
+          <option value="handmatig">Handmatig</option>
+          <option value="website">Website</option>
+          <option value="email">E-mail</option>
+          <option value="telefoon">Telefoon</option>
+        </select>
+      </div>
+    </div>
+  `;
+  openModal('Bulk aanmelding', html, [
+    { label:'Annuleren', cls:'btn-ghost', action:'sluitModal()' },
+    { label:'Aanmelden', cls:'btn-primary', action:'slaBulkAanmeldingOp()' }
+  ], true);
+}
+
+function updateBulkGroepSelect() {
+  const actId = document.getElementById('bulk-act')?.value;
+  const grpSel = document.getElementById('bulk-grp');
+  if (!grpSel) return;
+  const act = getAct(actId);
+  grpSel.innerHTML = '<option value="">Geen / n.v.t.</option>';
+  if (act?.groepen) act.groepen.forEach(g => {
+    const opt = document.createElement('option');
+    opt.value = g.id; opt.textContent = g.naam; grpSel.appendChild(opt);
+  });
+}
+
+function slaBulkAanmeldingOp() {
+  const actId  = document.getElementById('bulk-act').value;
+  const grpId  = document.getElementById('bulk-grp').value;
+  const status = document.getElementById('bulk-status').value;
+  const bron   = document.getElementById('bulk-bron').value;
+  if (!actId) { toast('Kies een activiteit.', 'fout'); return; }
+
+  const geselecteerd = [...document.querySelectorAll('.bulk-dl-cb:checked')].map(cb => cb.value);
+  if (geselecteerd.length === 0) { toast('Selecteer minimaal één deelnemer.', 'fout'); return; }
+
+  const act = getAct(actId);
+  let aangemeld = 0, overgeslagen = 0, opWachtlijst = 0;
+
+  geselecteerd.forEach(dlId => {
+    if (bestaatAanmelding(dlId, actId)) { overgeslagen++; return; }
+    let effectiefStatus = status;
+    if (status === 'bevestigd' && isGroepVol(actId, grpId||null)) {
+      effectiefStatus = 'wachtlijst';
+      opWachtlijst++;
+    }
+    db.aanmeldingen.push({ id:uid(), deelnemerId:dlId, activiteitId:actId,
+      groepId: grpId||null, status: effectiefStatus, bron, aangemeld: nu(),
+      statusHistory: [{status: effectiefStatus, datum: nu()}], notities: '' });
+    aangemeld++;
+  });
+
+  slaOp(); sluitModal(); navigeer('aanmeldingen');
+  let msg = `${aangemeld} deelnemer(s) aangemeld.`;
+  if (opWachtlijst > 0) msg += ` ${opWachtlijst} op wachtlijst (vol).`;
+  if (overgeslagen > 0) msg += ` ${overgeslagen} al aangemeld (overgeslagen).`;
+  toast(msg, aangemeld > 0 ? 'succes' : 'waarschuwing');
+}
+
+function updateGroepSelect() {
+  const actId = document.getElementById('a-act')?.value;
+  const grpSel = document.getElementById('a-grp');
+  if (!grpSel) return;
+  const act = getAct(actId);
+  grpSel.innerHTML = '<option value="">Geen / n.v.t.</option>';
+  if (act?.groepen) act.groepen.forEach(g => {
+    const opt = document.createElement('option');
+    opt.value = g.id; opt.textContent = g.naam; grpSel.appendChild(opt);
+  });
+}
+
+function slaAanmeldingOp(bestaandId) {
+  const dlId   = bestaandId ? getAanm(bestaandId).deelnemerId : document.getElementById('a-dl').value;
+  const actId  = bestaandId ? getAanm(bestaandId).activiteitId : document.getElementById('a-act').value;
+  const grpId  = document.getElementById('a-grp').value;
+  const status = document.getElementById('a-status').value;
+  const bron   = document.getElementById('a-bron').value;
+  const notities = document.getElementById('a-notities').value.trim();
+
+  if (!bestaandId && (!dlId || !actId)) { toast('Kies een deelnemer en activiteit.', 'fout'); return; }
+
+  // Dubbele aanmelding check (alleen bij nieuw)
+  if (!bestaandId && bestaatAanmelding(dlId, actId)) {
+    toast('Deze deelnemer is al aangemeld voor deze activiteit.', 'fout'); return;
+  }
+
+  if (bestaandId) {
+    const aanm = getAanm(bestaandId);
+    aanm.groepId  = grpId || null;
+    aanm.status   = status;
+    aanm.bron     = bron;
+    aanm.notities = notities;
+    aanm.statusHistory = aanm.statusHistory || [];
+    aanm.statusHistory.push({ status, datum: nu() });
+    slaOp(); sluitModal(); navigeer('aanmeldingen'); toast('Aanmelding bijgewerkt.', 'succes');
+    return;
+  }
+
+  // Capaciteitscheck per groep
+  let effectiefStatus = status;
+  if (status === 'bevestigd' && isGroepVol(actId, grpId||null)) {
+    effectiefStatus = 'wachtlijst';
+    toast('Vol — deelnemer op wachtlijst geplaatst.', 'waarschuwing');
+  }
+
+  db.aanmeldingen.push({ id:uid(), deelnemerId:dlId, activiteitId:actId,
+    groepId: grpId||null, status: effectiefStatus, bron, aangemeld: nu(),
+    statusHistory: [{status: effectiefStatus, datum: nu()}], notities });
+  slaOp(); sluitModal(); navigeer('aanmeldingen'); toast('Aanmelding opgeslagen.', 'succes');
+}
+
+function wijzigStatus(aanmId, nieuweStatus) {
+  if (!nieuweStatus) return;
+  const aanm = getAanm(aanmId);
+  if (!aanm) return;
+  aanm.status = nieuweStatus;
+  aanm.statusHistory = aanm.statusHistory || [];
+  aanm.statusHistory.push({ status: nieuweStatus, datum: nu() });
+  slaOp(); navigeer(huidigView); toast(`Status gewijzigd naar: ${nieuweStatus}`, 'succes');
+}
+
+function verwijderAanmelding(id) {
+  if (!confirm('Aanmelding verwijderen?')) return;
+  db.aanmeldingen = db.aanmeldingen.filter(a => a.id !== id);
+  slaOp(); navigeer(huidigView); toast('Aanmelding verwijderd.', 'succes');
+}
+
+// ─── BULK ACTIES ───
+function geselecteerdeIds() {
+  return [...document.querySelectorAll('.aanm-cb:checked')].map(cb => cb.value);
+}
+
+function updateBulkToolbar() {
+  const ids = geselecteerdeIds();
+  const toolbar = document.getElementById('bulk-toolbar');
+  const teller  = document.getElementById('bulk-teller');
+  if (!toolbar) return;
+  toolbar.classList.toggle('hidden', ids.length === 0);
+  toolbar.style.display = ids.length === 0 ? 'none' : 'flex';
+  if (teller) teller.textContent = `${ids.length} geselecteerd`;
+}
+
+function toggleAllesBulk(cb) {
+  document.querySelectorAll('.aanm-cb').forEach(el => el.checked = cb.checked);
+  updateBulkToolbar();
+}
+
+function bulkGroepWijzigen() {
+  const ids = geselecteerdeIds();
+  if (ids.length === 0) { toast('Selecteer eerst aanmeldingen.', 'fout'); return; }
+  const keuze = document.getElementById('bulk-grp-keuze')?.value;
+  if (!keuze) { toast('Kies een activiteit › groep.', 'fout'); return; }
+  const [actId, grpId] = keuze.split('|');
+  let verwerkt = 0;
+  ids.forEach(id => {
+    const aanm = getAanm(id);
+    if (aanm && aanm.activiteitId === actId) { aanm.groepId = grpId; verwerkt++; }
+  });
+  slaOp(); navigeer('aanmeldingen');
+  toast(`${verwerkt} aanmelding(en) ingedeeld in groep. ${ids.length - verwerkt > 0 ? `(${ids.length - verwerkt} overgeslagen — andere activiteit)` : ''}`, 'succes');
+}
+
+function bulkStatusWijzigen() {
+  const ids = geselecteerdeIds();
+  if (ids.length === 0) { toast('Selecteer eerst aanmeldingen.', 'fout'); return; }
+  const status = document.getElementById('bulk-status-keuze')?.value;
+  if (!status) return;
+  ids.forEach(id => {
+    const aanm = getAanm(id);
+    if (!aanm) return;
+    aanm.status = status;
+    aanm.statusHistory = aanm.statusHistory || [];
+    aanm.statusHistory.push({ status, datum: nu() });
+  });
+  slaOp(); navigeer('aanmeldingen');
+  toast(`${ids.length} aanmelding(en) gewijzigd naar '${status}'.`, 'succes');
+}
+
+function bulkEmailSelectie() {
+  const ids = geselecteerdeIds();
+  if (ids.length === 0) { toast('Selecteer eerst aanmeldingen.', 'fout'); return; }
+  const dlIds = [...new Set(ids.map(id => getAanm(id)?.deelnemerId).filter(Boolean))];
+  const ontvangers = dlIds.map(id => getDl(id)).filter(d => d?.toestemmingEmail && d?.email);
+  if (ontvangers.length === 0) { toast('Geen ontvangers met e-mailtoestemming.', 'fout'); return; }
+  const emails = ontvangers.map(d => d.email).join(',');
+  window.location.href = `mailto:?bcc=${emails}&subject=${encodeURIComponent('Zincafé Zweeloo — ')}&body=`;
+  toast(`E-mail geopend voor ${ontvangers.length} ontvangers.`, 'succes');
+}
+
+function bulkVerwijderen() {
+  const ids = geselecteerdeIds();
+  if (ids.length === 0) return;
+  if (!confirm(`${ids.length} aanmelding(en) definitief verwijderen?`)) return;
+  db.aanmeldingen = db.aanmeldingen.filter(a => !ids.includes(a.id));
+  slaOp(); navigeer('aanmeldingen'); toast(`${ids.length} aanmelding(en) verwijderd.`, 'succes');
+}
+
+// ═══════════════════════════════════════════════
+// PRESENTIELIJST
+// ═══════════════════════════════════════════════
+let presActId = null;
+let presGroepId = null;
+
+function renderPresentie() {
+  const aankomend = [...db.activiteiten]
+    .sort((a,b) => a.datum.localeCompare(b.datum));
+
+  let inhoud = '';
+  if (presActId) {
+    const act = getAct(presActId);
+    if (act) {
+      const aanm = db.aanmeldingen.filter(a =>
+        a.activiteitId === presActId &&
+        (!presGroepId || a.groepId === presGroepId) &&
+        ['bevestigd','aanwezig','no-show','nieuw'].includes(a.status)
+      );
+
+      const groepOpties = act.groepen?.length
+        ? `<select onchange="presGroepId=this.value||null;navigeer('presentie')" class="btn btn-ghost" style="font-size:13px;padding:7px 10px">
+            <option value="">Alle groepen</option>
+            ${act.groepen.map(g=>`<option value="${g.id}" ${presGroepId===g.id?'selected':''}>${esc(g.naam)}</option>`).join('')}
+          </select>` : '';
+
+      inhoud = `
+        <div class="card">
+          <div class="flex gap-8 mb-16">
+            <div>
+              <strong style="font-size:15px">${esc(act.naam)}</strong><br>
+              <span class="text-muted">${formatDatum(act.datum)} · ${act.tijd} · ${esc(act.locatie)}</span>
+            </div>
+            <div class="ml-auto flex gap-8">
+              ${groepOpties}
+              <button class="btn btn-ghost btn-sm" onclick="printPresentie()">🖨 Printen</button>
+            </div>
+          </div>
+          <div id="presentie-lijst">
+            ${aanm.length===0 ? '<p class="text-muted">Geen deelnemers voor deze selectie.</p>' :
+              aanm.map((a,i) => {
+                const dl = getDl(a.deelnemerId);
+                const isAanwezig = a.status === 'aanwezig';
+                const isNoShow   = a.status === 'no-show';
+                return `
+                  <div class="presentielijst-item">
+                    <span style="color:var(--grijs);font-size:12px;width:20px;text-align:right">${i+1}</span>
+                    <div class="checkbox-groot ${isAanwezig?'checked':isNoShow?'nee':''}"
+                      onclick="togglePresentie('${a.id}')">
+                      ${isAanwezig?'✓':isNoShow?'✕':''}
+                    </div>
+                    <span class="dl-initials">${initialen(dl?.voornaam,dl?.achternaam)}</span>
+                    <div style="flex:1">
+                      <strong>${esc(dl?.voornaam||'')} ${esc(dl?.achternaam||'')}</strong>
+                      ${dl?.telefoon?`<span class="text-muted" style="margin-left:8px">📞 ${esc(dl.telefoon)}</span>`:''}
+                    </div>
+                    ${statusBadge(a.status)}
+                  </div>`;
+              }).join('')}
+          </div>
+          <hr class="divider">
+          <div class="flex gap-8">
+            <span class="text-muted">Aanwezig: <strong>${aanm.filter(a=>a.status==='aanwezig').length}</strong></span>
+            <span class="text-muted">No-show: <strong>${aanm.filter(a=>a.status==='no-show').length}</strong></span>
+            <span class="text-muted">Onbekend: <strong>${aanm.filter(a=>!['aanwezig','no-show'].includes(a.status)).length}</strong></span>
+          </div>
+        </div>`;
+    }
+  }
+
+  return `
+    <div class="filter-bar mb-16">
+      <select onchange="presActId=this.value||null;presGroepId=null;navigeer('presentie')" class="btn btn-outline" style="font-size:13px;padding:8px 12px;min-width:280px">
+        <option value="">— kies een activiteit —</option>
+        ${aankomend.map(a => `<option value="${a.id}" ${presActId===a.id?'selected':''}>${formatDatumKort(a.datum)} · ${esc(a.naam)}</option>`).join('')}
+      </select>
+    </div>
+    ${presActId ? inhoud : `<div class="card"><div class="empty-state"><div class="emoji">✅</div><p>Selecteer een activiteit om de presentielijst te openen.</p></div></div>`}
+  `;
+}
+
+function openPresentieVoorActiviteit(actId) {
+  presActId = actId;
+  presGroepId = null;
+  navigeer('presentie');
+}
+
+function togglePresentie(aanmId) {
+  const aanm = getAanm(aanmId);
+  if (!aanm) return;
+  if (aanm.status === 'aanwezig')      aanm.status = 'no-show';
+  else if (aanm.status === 'no-show')  aanm.status = 'bevestigd';
+  else                                  aanm.status = 'aanwezig';
+  aanm.statusHistory = aanm.statusHistory || [];
+  aanm.statusHistory.push({ status: aanm.status, datum: nu() });
+  slaOp(); navigeer('presentie');
+}
+
+function printPresentie() {
+  window.print();
+}
+
+// ═══════════════════════════════════════════════
+// CENTRALE SELECTIEFUNCTIE
+// ═══════════════════════════════════════════════
+function getSelectie({ activiteitId, groepId, status } = {}) {
+  return db.aanmeldingen
+    .filter(a =>
+      (!activiteitId || a.activiteitId === activiteitId) &&
+      (!groepId      || a.groepId === groepId) &&
+      (!status       || a.status === status)
+    )
+    .map(a => ({ aanmelding: a, deelnemer: getDl(a.deelnemerId), activiteit: getAct(a.activiteitId) }))
+    .filter(x => x.deelnemer);
+}
+
+function getSelectieDeelnemers({ activiteitId, groepId, status } = {}) {
+  const sel = getSelectie({ activiteitId, groepId, status });
+  const gezien = new Set();
+  return sel.map(x => x.deelnemer).filter(d => { if (gezien.has(d.id)) return false; gezien.add(d.id); return true; });
+}
+
+// ═══════════════════════════════════════════════
+// COMMUNICATIE
+// ═══════════════════════════════════════════════
+function renderCommunicatie() {
+  const log = (db.communicatieLog || []).slice(-8).reverse();
+  const logHtml = log.length === 0
+    ? '<p class="text-muted">Nog geen berichten verstuurd.</p>'
+    : `<table style="font-size:12px;width:100%">
+        <thead><tr><th style="padding:4px 8px 4px 0;color:var(--grijs-donker)">Datum</th><th style="padding:4px 8px;color:var(--grijs-donker)">Kanaal</th><th style="padding:4px 8px;color:var(--grijs-donker)">Selectie</th><th style="padding:4px 8px;color:var(--grijs-donker)">#</th></tr></thead>
+        <tbody>${log.map(l=>`<tr style="border-bottom:1px solid var(--grijs-licht)">
+          <td style="padding:4px 8px 4px 0;color:var(--tekst-zacht)">${new Date(l.datum).toLocaleDateString('nl-NL',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'})}</td>
+          <td style="padding:4px 8px">${l.kanaal==='email'?'✉️ E-mail':'💬 WA'}</td>
+          <td style="padding:4px 8px">${esc(l.omschrijving)}</td>
+          <td style="padding:4px 8px"><strong>${l.aantalOntvangers}</strong></td>
+        </tr>`).join('')}</tbody>
+      </table>`;
+
+  // Activiteitenlijst voor dropdowns
+  const actOpties = db.activiteiten.map(a=>`<option value="${a.id}">${esc(a.naam)} · ${formatDatumKort(a.datum)}</option>`).join('');
+
+  const html = `
+    <div class="tabs">
+      <div class="tab active" onclick="commTab('email',this)">✉️ E-mail</div>
+      <div class="tab" onclick="commTab('whatsapp',this)">💬 WhatsApp</div>
+      <div class="tab" onclick="commTab('wachtlijst',this)">📤 Wachtlijst</div>
+      <div class="tab" onclick="commTab('log',this)">📋 Logboek</div>
+    </div>
+
+    <!-- EMAIL TAB -->
+    <div id="comm-email">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;align-items:start">
+        <div class="card">
+          <div class="card-title">✉️ Selectie instellen</div>
+          <div class="form-row cols-2">
+            <div class="form-group">
+              <label>Activiteit</label>
+              <select id="em-act" onchange="updateCommGroepen('em');updateCommPreview('em')">
+                <option value="">Alle activiteiten</option>
+                ${actOpties}
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Groep</label>
+              <select id="em-grp" onchange="updateCommPreview('em')">
+                <option value="">Alle groepen</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-row cols-2">
+            <div class="form-group">
+              <label>Status</label>
+              <select id="em-status" onchange="updateCommPreview('em')">
+                <option value="">Alle statussen</option>
+                <option value="bevestigd">Bevestigd</option>
+                <option value="wachtlijst">Wachtlijst</option>
+                <option value="nieuw">Nieuw</option>
+                <option value="afgemeld">Afgemeld</option>
+              </select>
+            </div>
+          </div>
+          <div id="em-preview" style="background:var(--blauw-licht);border-radius:8px;padding:10px 14px;font-size:12px;color:var(--blauw);margin-bottom:4px">
+            Selecteer hierboven om ontvangers te zien…
+          </div>
+          <div id="em-preview-namen" style="font-size:11px;color:var(--grijs-donker);margin-bottom:12px;min-height:16px"></div>
+
+          <hr class="divider">
+          <div class="form-row">
+            <div class="form-group">
+              <label>Sjabloon</label>
+              <select id="em-sjabloon" onchange="laadSjabloon('em')">
+                <option value="">— eigen tekst —</option>
+                <option value="bevestiging">✅ Bevestiging aanmelding</option>
+                <option value="herinnering">🔔 Herinnering morgenavond</option>
+                <option value="wachtlijst_bev">⏳ Bevestiging wachtlijst</option>
+                <option value="vrijgekomen">🎉 Plek vrijgekomen</option>
+                <option value="praktisch">📍 Praktische info voor avond</option>
+                <option value="bedankt">💙 Bedankt voor je komst</option>
+                <option value="annulering">❌ Annulering avond</option>
+                <option value="nieuwe_reeks">🔄 Nieuwe reeks aangekondigd</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label>Onderwerp</label>
+              <input id="em-onderwerp" value="Zincafé Zweeloo — ">
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label>Bericht <span class="text-muted">(tip: gebruik [naam] voor persoonlijke aanhef)</span></label>
+              <textarea id="em-bericht" style="min-height:130px" placeholder="Beste [naam],&#10;&#10;…"></textarea>
+            </div>
+          </div>
+          <button class="btn btn-primary" onclick="stuurEmail()">✉️ Maak e-mail aan</button>
+          <p class="text-muted mt-8">Opent je e-mailprogramma met BCC-veld ingevuld. Adressen zijn niet zichtbaar voor elkaar.</p>
+        </div>
+
+        <div class="card" style="background:var(--grijs-licht);border:none">
+          <div class="card-title" style="color:var(--grijs-donker)">Controlelijst vóór versturen</div>
+          <div id="em-checklist" style="font-size:13px;color:var(--tekst-zacht)">Selecteer eerst een activiteit…</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- WHATSAPP TAB -->
+    <div id="comm-whatsapp" class="hidden">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;align-items:start">
+        <div class="card">
+          <div class="card-title">💬 WhatsApp selectie</div>
+          <div class="form-row cols-2">
+            <div class="form-group">
+              <label>Activiteit</label>
+              <select id="wa-act" onchange="updateCommGroepen('wa');updateCommPreview('wa')">
+                <option value="">Alle activiteiten</option>
+                ${actOpties}
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Groep</label>
+              <select id="wa-grp" onchange="updateCommPreview('wa')">
+                <option value="">Alle groepen</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-row cols-2">
+            <div class="form-group">
+              <label>Status</label>
+              <select id="wa-status" onchange="updateCommPreview('wa')">
+                <option value="">Alle statussen</option>
+                <option value="bevestigd">Bevestigd</option>
+                <option value="wachtlijst">Wachtlijst</option>
+                <option value="nieuw">Nieuw</option>
+              </select>
+            </div>
+          </div>
+          <div id="wa-preview" style="background:var(--groen-licht);border-radius:8px;padding:10px 14px;font-size:12px;color:var(--groen);margin-bottom:4px">
+            Selecteer hierboven om ontvangers te zien…
+          </div>
+          <div id="wa-preview-namen" style="font-size:11px;color:var(--grijs-donker);margin-bottom:12px;min-height:16px"></div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label>Sjabloon</label>
+              <select id="wa-sjabloon" onchange="laadSjabloon('wa')">
+                <option value="">— eigen tekst —</option>
+                <option value="herinnering">🔔 Herinnering morgenavond</option>
+                <option value="vrijgekomen">🎉 Plek vrijgekomen</option>
+                <option value="praktisch">📍 Praktische info</option>
+                <option value="annulering">❌ Annulering avond</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label>Berichttekst</label>
+              <textarea id="wa-bericht" style="min-height:110px" placeholder="Hoi! Herinnering voor morgenavond…"></textarea>
+            </div>
+          </div>
+          <div class="flex gap-8" style="flex-wrap:wrap">
+            <button class="btn btn-ghost" onclick="kopieerWaNummers()">📋 Kopieer nummers</button>
+            <a class="whatsapp-btn" href="#" onclick="return openWhatsApp()">💬 Open WhatsApp Web</a>
+          </div>
+          <p class="text-muted mt-8">Alleen deelnemers met WhatsApp-toestemming én telefoonnummer worden meegenomen.</p>
+        </div>
+
+        <div class="card">
+          <div class="card-title">📞 Nummers in selectie</div>
+          <div id="wa-nummers-lijst" style="font-size:13px;color:var(--tekst-zacht)">Selecteer links een activiteit/groep…</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- WACHTLIJST TAB -->
+    <div id="comm-wachtlijst" class="hidden">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;align-items:start">
+        <div class="card">
+          <div class="card-title">📤 Wachtlijst handmatig beheren</div>
+          <div class="form-row">
+            <div class="form-group">
+              <label>Activiteit</label>
+              <select id="wl-act" onchange="updateWachtlijstView()">
+                <option value="">— kies activiteit —</option>
+                ${actOpties}
+              </select>
+            </div>
+          </div>
+          <div id="wl-inhoud"><p class="text-muted">Selecteer een activiteit.</p></div>
+        </div>
+        <div class="card" id="wl-actie-card" style="display:none">
+          <div class="card-title">Geselecteerde persoon indelen</div>
+          <div id="wl-actie-inhoud"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- LOG TAB -->
+    <div id="comm-log" class="hidden">
+      <div class="card">
+        <div class="card-title">📋 Communicatielog (laatste 8)</div>
+        ${logHtml}
+      </div>
+    </div>
+  `;
+
+  setTimeout(() => {
+    updateCommPreview('em');
+    updateCommPreview('wa');
+  }, 80);
+
+  return html;
+}
+
+function commTab(tab, el) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  el.classList.add('active');
+  ['email','whatsapp','wachtlijst','log'].forEach(t => {
+    const el2 = document.getElementById('comm-'+t);
+    if (el2) el2.classList.toggle('hidden', t !== tab);
+  });
+}
+
+function updateCommGroepen(prefix) {
+  const actId = document.getElementById(`${prefix}-act`)?.value;
+  const grpSel = document.getElementById(`${prefix}-grp`);
+  if (!grpSel) return;
+  const act = getAct(actId);
+  grpSel.innerHTML = '<option value="">Alle groepen</option>';
+  if (act?.groepen) act.groepen.forEach(g => {
+    const o = document.createElement('option'); o.value = g.id; o.textContent = g.naam; grpSel.appendChild(o);
+  });
+}
+
+function updateCommPreview(prefix) {
+  const actId  = document.getElementById(`${prefix}-act`)?.value || null;
+  const grpId  = document.getElementById(`${prefix}-grp`)?.value || null;
+  const status = document.getElementById(`${prefix}-status`)?.value || null;
+
+  const deelnemers = getSelectieDeelnemers({ activiteitId: actId, groepId: grpId, status });
+
+  const prevEl     = document.getElementById(`${prefix}-preview`);
+  const namenEl    = document.getElementById(`${prefix}-preview-namen`);
+  const nummersEl  = document.getElementById(`${prefix}-nummers-lijst`);
+  const checkEl    = document.getElementById(`${prefix}-checklist`);
+
+  if (prevEl) {
+    const metEmail = deelnemers.filter(d => d.toestemmingEmail && d.email).length;
+    const metWa    = deelnemers.filter(d => d.toestemmingWhatsApp && d.telefoon).length;
+    if (prefix === 'em') {
+      prevEl.textContent = `${metEmail} ontvangers met e-mailtoestemming (van ${deelnemers.length} in selectie)`;
+    } else {
+      prevEl.textContent = `${metWa} ontvangers met WhatsApp + telefoonnummer (van ${deelnemers.length} in selectie)`;
+    }
+  }
+  if (namenEl) {
+    const namen = deelnemers.slice(0,6).map(d=>`${d.voornaam} ${d.achternaam}`).join(', ');
+    namenEl.textContent = deelnemers.length ? namen + (deelnemers.length > 6 ? ` +${deelnemers.length-6} meer` : '') : 'Geen deelnemers in deze selectie.';
+  }
+  if (nummersEl && prefix === 'wa') {
+    const metWa = deelnemers.filter(d => d.toestemmingWhatsApp && d.telefoon);
+    nummersEl.innerHTML = metWa.length === 0
+      ? '<p class="text-muted">Geen nummers met toestemming.</p>'
+      : metWa.map(d => `<div style="padding:5px 0;border-bottom:1px solid var(--grijs-licht);display:flex;gap:8px;align-items:center">
+          <span class="dl-initials">${initialen(d.voornaam,d.achternaam)}</span>
+          <span>${esc(d.voornaam)} ${esc(d.achternaam)}</span>
+          <a href="tel:${esc(d.telefoon)}" style="margin-left:auto;color:var(--blauw-mid);font-size:12px">${esc(d.telefoon)}</a>
+        </div>`).join('');
+  }
+
+  // Controlelijst bij e-mail tab
+  if (checkEl && prefix === 'em' && actId) {
+    const act = getAct(actId);
+    const sel = getSelectie({ activiteitId: actId, groepId: grpId, status });
+    const zonderEmail = deelnemers.filter(d => !d.email || !d.toestemmingEmail).length;
+    const zonderTel   = deelnemers.filter(d => !d.telefoon).length;
+    const wlAantal    = getSelectie({ activiteitId: actId, status: 'wachtlijst' }).length;
+    checkEl.innerHTML = `
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <div class="flex gap-8"><span>${sel.length > 0 ? '✅' : '⚠️'}</span> <span><strong>${sel.length}</strong> deelnemers in selectie</span></div>
+        <div class="flex gap-8"><span>${zonderEmail === 0 ? '✅' : '⚠️'}</span> <span>${zonderEmail === 0 ? 'Iedereen heeft e-mail' : `<strong>${zonderEmail}</strong> zonder e-mail of toestemming`}</span></div>
+        <div class="flex gap-8"><span>${zonderTel === 0 ? '✅' : 'ℹ️'}</span> <span>${zonderTel === 0 ? 'Iedereen heeft telefoonnummer' : `<strong>${zonderTel}</strong> zonder telefoonnummer`}</span></div>
+        <div class="flex gap-8"><span>${wlAantal === 0 ? '✅' : 'ℹ️'}</span> <span>${wlAantal === 0 ? 'Geen wachtlijst' : `<strong>${wlAantal}</strong> personen op wachtlijst`}</span></div>
+        ${act?.maxDeelnemers ? `<div class="flex gap-8"><span>ℹ️</span> <span>Capaciteit: <strong>${bevestigdAantal(actId)}/${act.maxDeelnemers}</strong></span></div>` : ''}
+      </div>`;
+  } else if (checkEl && prefix === 'em') {
+    checkEl.innerHTML = '<p class="text-muted">Selecteer een activiteit voor de controlelijst.</p>';
+  }
+}
+
+const SJABLONEN = {
+  bevestiging:   { onderwerp: 'Bevestiging aanmelding Zincafé Zweeloo', bericht: `Beste [naam],\n\nHartelijk bedankt voor je aanmelding! Je plek is bevestigd.\n\nWe kijken er naar uit om je te verwelkomen.\n\nMet vriendelijke groet,\nNathalie & Sjoerd\nZincafé Zweeloo` },
+  herinnering:   { onderwerp: 'Herinnering: Zincafé morgenavond', bericht: `Beste [naam],\n\nEen korte herinnering: morgenavond is er een bijeenkomst van Zincafé Zweeloo.\n\n📅 Datum: ...\n🕐 Tijd: 20:00\n📍 Locatie: Zincafé Zweeloo\n\nZorg voor een comfortabele avond — en neem gerust iemand mee die je wilt introduceren!\n\nTot morgen!\nNathalie & Sjoerd` },
+  wachtlijst_bev:{ onderwerp: 'Je staat op de wachtlijst — Zincafé Zweeloo', bericht: `Beste [naam],\n\nBedankt voor je aanmelding! Helaas is de bijeenkomst op dit moment volgeboekt.\n\nJe staat op de wachtlijst. We nemen contact op zodra er een plek vrijkomt.\n\nMet vriendelijke groet,\nNathalie & Sjoerd\nZincafé Zweeloo` },
+  vrijgekomen:   { onderwerp: '🎉 Er is een plek vrijgekomen — Zincafé Zweeloo', bericht: `Beste [naam],\n\nGoed nieuws! Er is een plek vrijgekomen voor de bijeenkomst.\n\nKun je erbij zijn? Laat het ons weten voor [datum] zodat we je plek kunnen bevestigen.\n\nMet vriendelijke groet,\nNathalie & Sjoerd` },
+  praktisch:     { onderwerp: 'Praktische info voor vanavond — Zincafé Zweeloo', bericht: `Beste [naam],\n\nVanavond is er een bijeenkomst van Zincafé Zweeloo. Graag nog een paar praktische punten:\n\n📍 Adres: ...\n🅿️ Parkeren: ...\n🕐 Deuren open: ...\n☕ Er is koffie/thee bij aankomst\n\nTot vanavond!\nNathalie & Sjoerd` },
+  bedankt:       { onderwerp: 'Bedankt voor je komst — Zincafé Zweeloo', bericht: `Beste [naam],\n\nHartelijk dank voor je aanwezigheid bij onze bijeenkomst! Het was een mooie avond.\n\nHeb je nog gedachten of wil je iets delen? We horen het graag.\n\nTot de volgende keer!\nNathalie & Sjoerd\nZincafé Zweeloo` },
+  annulering:    { onderwerp: 'Bijeenkomst geannuleerd — Zincafé Zweeloo', bericht: `Beste [naam],\n\nMet spijt moeten we melden dat de bijeenkomst van [datum] helaas niet doorgaat.\n\nWe nemen zo snel mogelijk contact op over een nieuwe datum.\n\nMet excuses voor het ongemak,\nNathalie & Sjoerd\nZincafé Zweeloo` },
+  nieuwe_reeks:  { onderwerp: 'Nieuwe reeks aangekondigd — Zincafé Zweeloo', bericht: `Beste [naam],\n\nWe zijn blij aan te kondigen dat er een nieuwe reeks start!\n\n🗓 Start: ...\n📚 Thema: ...\n📍 Locatie: Zincafé Zweeloo\n\nAanmelden kan via de website: zincafe-zweeloo.nl\n\nMet vriendelijke groet,\nNathalie & Sjoerd` },
+};
+
+function laadSjabloon(prefix) {
+  const s = document.getElementById(`${prefix}-sjabloon`)?.value;
+  const sjab = SJABLONEN[s];
+  if (!sjab) return;
+  const ond = document.getElementById(`${prefix}-onderwerp`);
+  const ber = document.getElementById(`${prefix}-bericht`);
+  if (ond) ond.value = sjab.onderwerp;
+  if (ber) ber.value = sjab.bericht;
+}
+
+function stuurEmail() {
+  const actId  = document.getElementById('em-act')?.value || null;
+  const grpId  = document.getElementById('em-grp')?.value || null;
+  const status = document.getElementById('em-status')?.value || null;
+  const ontvangers = getSelectieDeelnemers({ activiteitId: actId, groepId: grpId, status }).filter(d => d.toestemmingEmail && d.email);
+  if (ontvangers.length === 0) { toast('Geen ontvangers met e-mailtoestemming.', 'fout'); return; }
+  const emails    = ontvangers.map(d => d.email).join(',');
+  const onderwerp = encodeURIComponent(document.getElementById('em-onderwerp').value);
+  const bericht   = encodeURIComponent(document.getElementById('em-bericht').value);
+  window.location.href = `mailto:?bcc=${emails}&subject=${onderwerp}&body=${bericht}`;
+
+  // Log
+  const act = getAct(actId); const grp = act?.groepen?.find(g=>g.id===grpId);
+  const omschr = [act?.naam||'Alle activiteiten', grp?.naam, status].filter(Boolean).join(' › ');
+  logCommunicatie('email', omschr, ontvangers.length, document.getElementById('em-onderwerp').value);
+  toast(`E-mail geopend voor ${ontvangers.length} ontvangers.`, 'succes');
+}
+
+function kopieerWaNummers() {
+  const actId  = document.getElementById('wa-act')?.value || null;
+  const grpId  = document.getElementById('wa-grp')?.value || null;
+  const status = document.getElementById('wa-status')?.value || null;
+  const ontvangers = getSelectieDeelnemers({ activiteitId: actId, groepId: grpId, status }).filter(d => d.toestemmingWhatsApp && d.telefoon);
+  if (ontvangers.length === 0) { toast('Geen nummers met WhatsApp-toestemming.', 'fout'); return; }
+  const tekst = ontvangers.map(d => `${d.voornaam} ${d.achternaam}: ${d.telefoon}`).join('\n');
+  navigator.clipboard.writeText(tekst).then(() => toast(`${ontvangers.length} nummers gekopieerd.`, 'succes'));
+}
+
+function openWhatsApp() {
+  const bericht = document.getElementById('wa-bericht')?.value || '';
+  if (!bericht.trim()) { toast('Vul eerst een bericht in.', 'fout'); return false; }
+  const actId  = document.getElementById('wa-act')?.value || null;
+  const grpId  = document.getElementById('wa-grp')?.value || null;
+  const status = document.getElementById('wa-status')?.value || null;
+  const ontvangers = getSelectieDeelnemers({ activiteitId: actId, groepId: grpId, status }).filter(d => d.toestemmingWhatsApp && d.telefoon);
+  const act = getAct(actId); const grp = act?.groepen?.find(g=>g.id===grpId);
+  const omschr = [act?.naam||'Alle activiteiten', grp?.naam, status].filter(Boolean).join(' › ');
+  logCommunicatie('whatsapp', omschr, ontvangers.length, bericht.slice(0,40));
+  window.open(`https://wa.me/?text=${encodeURIComponent(bericht)}`, '_blank');
+  toast('WhatsApp Web geopend.', 'succes');
+  return false;
+}
+
+function logCommunicatie(kanaal, omschrijving, aantalOntvangers, onderwerp) {
+  db.communicatieLog = db.communicatieLog || [];
+  db.communicatieLog.push({ datum: nu(), kanaal, omschrijving, aantalOntvangers, onderwerp });
+  slaOp();
+}
+
+// ═══════════════════════════════════════════════
+// WACHTLIJST HANDMATIG BEHEER
+// ═══════════════════════════════════════════════
+function updateWachtlijstView() {
+  const actId = document.getElementById('wl-act')?.value;
+  const inhEl = document.getElementById('wl-inhoud');
+  const actCard = document.getElementById('wl-actie-card');
+  if (!inhEl) return;
+
+  if (!actId) { inhEl.innerHTML = '<p class="text-muted">Selecteer een activiteit.</p>'; if(actCard) actCard.style.display='none'; return; }
+
+  const act = getAct(actId);
+  const wl  = db.aanmeldingen
+    .filter(a => a.activiteitId === actId && a.status === 'wachtlijst')
+    .sort((a,b) => a.aangemeld.localeCompare(b.aangemeld));
+
+  const bezet = bevestigdAantal(actId);
+
+  if (wl.length === 0) {
+    inhEl.innerHTML = `
+      <div style="background:var(--groen-licht);border-radius:8px;padding:12px;font-size:13px;color:var(--groen)">
+        ✅ Geen personen op de wachtlijst voor deze activiteit.
+      </div>
+      <div class="mt-8 text-muted">Bevestigd: <strong>${bezet}/${act.maxDeelnemers}</strong></div>`;
+    if(actCard) actCard.style.display='none';
+    return;
+  }
+
+  inhEl.innerHTML = `
+    <div class="text-muted mb-16">Bevestigd: <strong>${bezet}/${act.maxDeelnemers}</strong> · Wachtlijst: <strong>${wl.length}</strong></div>
+    ${wl.map((a,i) => {
+      const dl = getDl(a.deelnemerId);
+      return `<div class="presentielijst-item" style="cursor:pointer;border-radius:6px;padding:8px;margin-bottom:4px;transition:background 0.1s" onmouseover="this.style.background='var(--blauw-licht)'" onmouseout="this.style.background=''" onclick="selecteerWachtlijstPersoon('${a.id}','${actId}')">
+        <span style="color:var(--grijs);font-size:11px;width:18px;text-align:right">${i+1}</span>
+        <span class="dl-initials">${initialen(dl?.voornaam,dl?.achternaam)}</span>
+        <div style="flex:1">
+          <strong>${esc(dl?.voornaam||'')} ${esc(dl?.achternaam||'')}</strong>
+          ${dl?.telefoon ? `<span class="text-muted" style="margin-left:8px;font-size:12px">📞 ${esc(dl.telefoon)}</span>` : ''}
+          ${a.notities ? `<br><span class="text-muted" style="font-size:12px">📝 ${esc(a.notities)}</span>` : ''}
+        </div>
+        <span class="text-muted" style="font-size:11px">${formatDatum(a.aangemeld)}</span>
+        <button class="btn btn-ghost btn-sm">Selecteer →</button>
+      </div>`;
+    }).join('')}
+  `;
+  if(actCard) actCard.style.display='none';
+}
+
+function selecteerWachtlijstPersoon(aanmId, actId) {
+  const aanm = getAanm(aanmId);
+  const dl   = getDl(aanm?.deelnemerId);
+  const act  = getAct(actId);
+  if (!aanm || !dl || !act) return;
+
+  const actCard = document.getElementById('wl-actie-card');
+  const actInh  = document.getElementById('wl-actie-inhoud');
+  if (!actCard || !actInh) return;
+
+  const bezet = bevestigdAantal(actId);
+  const nogPlek = bezet < act.maxDeelnemers;
+
+  const groepenOpties = (act.groepen || []).map(g => {
+    const grpBezet = bevestigdAantalVoorGroep(actId, g.id);
+    const grpVol   = grpBezet >= g.max;
+    return `<option value="${g.id}" ${grpVol?'disabled':''}>${esc(g.naam)} (${grpBezet}/${g.max})${grpVol?' — VOL':''}</option>`;
+  }).join('');
+
+  actInh.innerHTML = `
+    <div style="background:var(--blauw-licht);border-radius:8px;padding:12px;margin-bottom:14px">
+      <strong>${esc(dl.voornaam)} ${esc(dl.achternaam)}</strong><br>
+      <span class="text-muted">${esc(dl.email)}</span>
+      ${dl.telefoon ? `<br><span class="text-muted">📞 ${esc(dl.telefoon)}</span>` : ''}
+      ${aanm.notities ? `<br><span class="text-muted" style="font-size:12px">📝 ${esc(aanm.notities)}</span>` : ''}
+    </div>
+
+    <div class="form-group mb-16">
+      <label>Indelen in groep</label>
+      <select id="wl-groep-keuze">
+        <option value="">Geen groep / n.v.t.</option>
+        ${groepenOpties}
+      </select>
+    </div>
+
+    ${!nogPlek ? `<div style="background:var(--geel-licht);border-radius:6px;padding:10px;font-size:13px;color:var(--geel);margin-bottom:12px">
+      ⚠️ Activiteit is vol (${bezet}/${act.maxDeelnemers}). Je kunt toch doorschuiven door hieronder te bevestigen.
+    </div>` : `<div style="background:var(--groen-licht);border-radius:6px;padding:10px;font-size:13px;color:var(--groen);margin-bottom:12px">
+      ✅ Er is nog plek (${bezet}/${act.maxDeelnemers}).
+    </div>`}
+
+    <div class="flex gap-8">
+      <button class="btn btn-primary" onclick="bevestigWachtlijstDoorschuif('${aanmId}')">✅ Bevestigen & indelen</button>
+      <button class="btn btn-ghost" onclick="document.getElementById('wl-actie-card').style.display='none'">Annuleren</button>
+    </div>
+  `;
+  actCard.style.display = 'block';
+}
+
+function bevestigWachtlijstDoorschuif(aanmId) {
+  const aanm  = getAanm(aanmId);
+  if (!aanm) return;
+  const grpId = document.getElementById('wl-groep-keuze')?.value || null;
+  aanm.status = 'bevestigd';
+  aanm.groepId = grpId || aanm.groepId;
+  aanm.statusHistory = aanm.statusHistory || [];
+  aanm.statusHistory.push({ status: 'bevestigd', datum: nu() });
+  slaOp();
+  const dl = getDl(aanm.deelnemerId);
+  toast(`${dl?.voornaam} ${dl?.achternaam} doorgeschoven naar bevestigd.`, 'succes');
+  updateWachtlijstView();
+  document.getElementById('wl-actie-card').style.display = 'none';
+}
+
+// ═══════════════════════════════════════════════
+// EXPORT / BACKUP
+// ═══════════════════════════════════════════════
+function renderExport() {
+  const dbSize = JSON.stringify(db).length;
+  const kb = (dbSize / 1024).toFixed(1);
+  return `
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px">
+      <div class="card">
+        <div class="card-title">💾 Volledige backup (JSON)</div>
+        <div style="background:var(--blauw-licht);border-radius:8px;padding:12px 14px;margin-bottom:14px;font-size:12px;color:var(--blauw)">
+          <strong>📍 Waar staat je data?</strong><br>
+          Alles wordt opgeslagen in de <strong>localStorage van deze browser</strong> op deze computer. 
+          Data is niet zichtbaar in andere browsers of op andere apparaten. 
+          Download regelmatig een backup-JSON als reservekopie — dat bestand kun je ook op een andere browser terugzetten.
+        </div>
+        <p style="font-size:13px;color:var(--tekst-zacht);margin-bottom:14px">
+          Download alle data als JSON-bestand. Gebruik dit als backup of om te herstellen op een andere browser.
+        </p>
+        <p class="text-muted mb-16">Huidige datagrootte: <strong>${kb} KB</strong></p>
+        <button class="btn btn-primary" onclick="downloadJSON()">⬇️ Download backup.json</button>
+        <hr class="divider">
+        <p style="font-size:13px;color:var(--tekst-zacht);margin-bottom:10px">Herstel vanuit een eerder gedownload JSON-bestand:</p>
+        <input type="file" id="import-file" accept=".json" onchange="importeerJSON(this)" style="font-size:12px">
+      </div>
+
+      <div class="card">
+        <div class="card-title">📊 Exporteer naar CSV</div>
+        <p style="font-size:13px;color:var(--tekst-zacht);margin-bottom:14px">
+          Exporteer afzonderlijke lijsten voor gebruik in Excel of Sheets.
+        </p>
+        <div style="display:flex;flex-direction:column;gap:8px">
+          <button class="btn btn-outline" onclick="exporteerCSV('deelnemers')">👥 Deelnemers exporteren</button>
+          <button class="btn btn-outline" onclick="exporteerCSV('aanmeldingen')">📋 Aanmeldingen exporteren</button>
+          <button class="btn btn-outline" onclick="exporteerCSV('activiteiten')">📅 Activiteiten exporteren</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">🗑 Gegevens wissen</div>
+        <p style="font-size:13px;color:var(--tekst-zacht);margin-bottom:14px">
+          Wis alle gegevens en begin opnieuw. <strong>Dit kan niet ongedaan gemaakt worden.</strong>
+        </p>
+        <button class="btn btn-danger" onclick="wisAlleData()">⚠️ Alle data wissen</button>
+      </div>
+
+      <div class="card">
+        <div class="card-title">📈 Statistieken</div>
+        ${renderStatistieken()}
+      </div>
+    </div>
+  `;
+}
+
+function renderStatistieken() {
+  const totaleDl   = db.deelnemers.length;
+  const totaleAanm = db.aanmeldingen.length;
+  const bevest     = db.aanmeldingen.filter(a=>a.status==='bevestigd').length;
+  const wacht      = db.aanmeldingen.filter(a=>a.status==='wachtlijst').length;
+  const afgemeld   = db.aanmeldingen.filter(a=>a.status==='afgemeld').length;
+  const noshow     = db.aanmeldingen.filter(a=>a.status==='no-show').length;
+  const aanwezig   = db.aanmeldingen.filter(a=>a.status==='aanwezig').length;
+
+  const bronnen = {};
+  db.aanmeldingen.forEach(a => { bronnen[a.bron] = (bronnen[a.bron]||0)+1; });
+
+  return `
+    <table style="font-size:13px">
+      <tr><td style="padding:3px 8px 3px 0;color:var(--tekst-zacht)">Deelnemers</td><td><strong>${totaleDl}</strong></td></tr>
+      <tr><td style="padding:3px 8px 3px 0;color:var(--tekst-zacht)">Totale aanmeldingen</td><td><strong>${totaleAanm}</strong></td></tr>
+      <tr><td style="padding:3px 8px 3px 0;color:var(--groen)">Bevestigd</td><td><strong>${bevest}</strong></td></tr>
+      <tr><td style="padding:3px 8px 3px 0;color:var(--geel)">Wachtlijst</td><td><strong>${wacht}</strong></td></tr>
+      <tr><td style="padding:3px 8px 3px 0;color:var(--grijs-donker)">Afgemeld</td><td><strong>${afgemeld}</strong></td></tr>
+      <tr><td style="padding:3px 8px 3px 0;color:var(--groen)">Aanwezig</td><td><strong>${aanwezig}</strong></td></tr>
+      <tr><td style="padding:3px 8px 3px 0;color:var(--rood)">No-show</td><td><strong>${noshow}</strong></td></tr>
+    </table>
+    <hr class="divider">
+    <strong style="font-size:12px">Bron aanmeldingen:</strong>
+    <table style="font-size:12px;margin-top:6px">
+      ${Object.entries(bronnen).map(([k,v])=>`<tr><td style="padding:2px 8px 2px 0;color:var(--tekst-zacht)">${bronLabel(k)}</td><td><strong>${v}</strong></td></tr>`).join('')}
+    </table>
+  `;
+}
+
+function downloadJSON() {
+  const blob = new Blob([JSON.stringify(db, null, 2)], { type: 'application/json' });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href = url; a.download = `zincafe-backup-${new Date().toISOString().split('T')[0]}.json`;
+  a.click(); URL.revokeObjectURL(url);
+  toast('Backup gedownload.', 'succes');
+}
+
+function importeerJSON(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      const data = JSON.parse(e.target.result);
+      if (!data.deelnemers || !data.activiteiten) { toast('Ongeldig backup-bestand.', 'fout'); return; }
+      if (!confirm(`Huidige data overschrijven met backup (${data.deelnemers.length} deelnemers, ${data.activiteiten.length} activiteiten)?`)) return;
+      db = data;
+      slaOp(); navigeer('dashboard'); toast('Data hersteld vanuit backup.', 'succes');
+    } catch { toast('Bestand kon niet worden gelezen.', 'fout'); }
+  };
+  reader.readAsText(file);
+}
+
+function exporteerCSV(type) {
+  let rows = [], filename = '';
+  if (type === 'deelnemers') {
+    filename = 'zincafe-deelnemers.csv';
+    rows = [['ID','Voornaam','Achternaam','E-mail','Telefoon','Woonplaats','Toest.email','Toest.WhatsApp','Aangemaakt']];
+    db.deelnemers.forEach(d => rows.push([d.id,d.voornaam,d.achternaam,d.email,d.telefoon||'',d.woonplaats||'',d.toestemmingEmail?'ja':'nee',d.toestemmingWhatsApp?'ja':'nee',d.aangemaakt]));
+  } else if (type === 'aanmeldingen') {
+    filename = 'zincafe-aanmeldingen.csv';
+    rows = [['ID','Deelnemer','E-mail','Activiteit','Datum activiteit','Groep','Status','Bron','Aangemeld']];
+    db.aanmeldingen.forEach(a => {
+      const dl = getDl(a.deelnemerId);
+      const act = getAct(a.activiteitId);
+      const grp = act?.groepen?.find(g=>g.id===a.groepId);
+      rows.push([a.id,`${dl?.voornaam||''} ${dl?.achternaam||''}`,dl?.email||'',act?.naam||'',act?.datum||'',grp?.naam||'',a.status,a.bron,a.aangemeld]);
+    });
+  } else if (type === 'activiteiten') {
+    filename = 'zincafe-activiteiten.csv';
+    rows = [['ID','Naam','Type','Datum','Tijd','Locatie','Max','Bevestigd','Wachtlijst','Status']];
+    db.activiteiten.forEach(a => rows.push([a.id,a.naam,a.type,a.datum,a.tijd,a.locatie,a.maxDeelnemers,bevestigdAantal(a.id),wachtlijstAantal(a.id),a.status]));
+  }
+  const csv = rows.map(r => r.map(c => `"${String(c).replace(/"/g,'""')}"`).join(',')).join('\n');
+  const blob = new Blob(['\ufeff'+csv], { type: 'text/csv;charset=utf-8' });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href = url; a.download = filename; a.click(); URL.revokeObjectURL(url);
+  toast(`${filename} gedownload.`, 'succes');
+}
+
+function wisAlleData() {
+  if (!confirm('Weet je het zeker? Alle data wordt permanent gewist.')) return;
+  if (!confirm('Laatste kans: alle deelnemers, activiteiten en aanmeldingen worden verwijderd.')) return;
+  localStorage.removeItem(STORE_KEY);
+  location.reload();
+}
+
+// ═══════════════════════════════════════════════
+// MODAL
+// ═══════════════════════════════════════════════
+function openModal(titel, inhoud, knoppen, groot) {
+  document.getElementById('modal-titel').textContent = titel;
+  document.getElementById('modal-inhoud').innerHTML = inhoud;
+  const footer = document.getElementById('modal-footer');
+  footer.innerHTML = knoppen ? knoppen.map(k => `<button class="btn ${k.cls}" onclick="${k.action}">${k.label}</button>`).join('') : '';
+  document.getElementById('modal-box').className = 'modal' + (groot ? ' modal-lg' : '');
+  document.getElementById('modal-overlay').classList.remove('hidden');
+}
+
+function sluitModal(evt) {
+  if (evt && evt.target !== document.getElementById('modal-overlay')) return;
+  document.getElementById('modal-overlay').classList.add('hidden');
+}
+
+// ═══════════════════════════════════════════════
+// TOAST
+// ═══════════════════════════════════════════════
+function toast(bericht, type) {
+  const c = document.getElementById('toast-container');
+  const el = document.createElement('div');
+  el.className = `toast ${type||''}`;
+  el.innerHTML = `<span>${bericht}</span>`;
+  c.appendChild(el);
+  setTimeout(() => el.remove(), 3500);
+}
+
+// ═══════════════════════════════════════════════
+// ESCAPE (XSS preventie)
+// ═══════════════════════════════════════════════
+function esc(str) {
+  if (!str) return '';
+  return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+
+// ═══════════════════════════════════════════════
+// START
+// ═══════════════════════════════════════════════
+laadData();
+navigeer('dashboard');
+bijwerkBadges();
+
+// Communicatie: live preview update
+document.addEventListener('change', e => {
+  if (e.target.id === 'em-selectie') updateEmailPreview();
+});
+</script>
+
+<style>
+@media print {
+  #sidebar, #topbar, .filter-bar, .btn, select { display: none !important; }
+  #content { padding: 0; }
+  .card { box-shadow: none; border: 1px solid #ccc; }
+}
+</style>
+</body>
+</html>
