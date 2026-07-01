@@ -434,7 +434,7 @@
       <h2 id="topbar-titel">Dashboard</h2>
       <div style="position:relative">
         <input type="text" id="topbar-zoek" placeholder="🔍 Zoek deelnemer…" autocomplete="off"
-          oninput="globaalZoek(this.value)" onfocus="globaalZoek(this.value)"
+          oninput="debounceZoek(this.value)" onfocus="if(this.value.length>=2)globaalZoek(this.value)"
           style="width:220px;padding:7px 10px;border:1px solid var(--rand);border-radius:6px;font-size:13px;font-family:'DM Sans',sans-serif">
         <div id="topbar-zoek-resultaten" class="hidden" style="position:absolute;top:38px;left:0;width:320px;background:white;border:1px solid var(--rand);border-radius:8px;box-shadow:var(--schaduw-lg);max-height:360px;overflow-y:auto;z-index:500"></div>
       </div>
@@ -699,6 +699,16 @@ function sortPijl(huidigeKolom, kolom, richting) {
 // ═══════════════════════════════════════════════
 // GLOBALE ZOEKFUNCTIE (topbar)
 // ═══════════════════════════════════════════════
+function debounceZoek(val) {
+  clearTimeout(window._topbarZoekTimer);
+  if ((val||'').trim().length < 2) {
+    const resEl = document.getElementById('topbar-zoek-resultaten');
+    if (resEl) { resEl.classList.add('hidden'); resEl.innerHTML = ''; }
+    return;
+  }
+  window._topbarZoekTimer = setTimeout(() => globaalZoek(val), 400);
+}
+
 function globaalZoek(q) {
   const resEl = document.getElementById('topbar-zoek-resultaten');
   if (!resEl) return;
@@ -1317,7 +1327,7 @@ function renderDeelnemers() {
       <div class="search-wrap">
         <span class="search-icon">🔍</span>
         <input type="text" placeholder="Zoek op naam, e-mail, woonplaats…" value="${esc(dlFilter)}"
-          oninput="dlFilter=this.value;navigeer('deelnemers')" style="padding-left:32px;width:260px">
+          oninput="clearTimeout(window._dlZoekTimer);window._dlZoekTimer=setTimeout(()=>{dlFilter=this.value;navigeer('deelnemers')},400)" style="padding-left:32px;width:260px">
       </div>
       <span class="text-muted">${lijst.length} van ${db.deelnemers.length}</span>
     </div>
@@ -1573,7 +1583,7 @@ function renderAanmeldingen() {
       <div class="search-wrap">
         <span class="search-icon">🔍</span>
         <input type="text" placeholder="Zoek deelnemer…" value="${esc(aanmFilter.zoek)}"
-          oninput="aanmFilter.zoek=this.value;navigeer('aanmeldingen')" style="padding-left:32px;width:200px">
+          oninput="clearTimeout(window._aanmZoekTimer);window._aanmZoekTimer=setTimeout(()=>{aanmFilter.zoek=this.value;navigeer('aanmeldingen')},400)" style="padding-left:32px;width:200px">
       </div>
       <select onchange="aanmFilter.status=this.value;navigeer('aanmeldingen')" class="btn btn-ghost" style="font-size:13px;padding:7px 10px">
         ${statusOpties.map(s => `<option value="${s}" ${aanmFilter.status===s?'selected':''}>${s||'Alle statussen'}</option>`).join('')}
