@@ -347,6 +347,30 @@
   .empty-state .emoji { font-size: 40px; margin-bottom: 12px; }
   .empty-state p { font-size: 14px; }
 
+  /* ─── PIN SCHERM ─── */
+  #pin-scherm {
+    position: fixed; inset: 0; background: var(--blauw);
+    display: flex; align-items: center; justify-content: center;
+    z-index: 9999; flex-direction: column; gap: 24px;
+  }
+  #pin-scherm.hidden { display: none !important; }
+  .pin-logo { color: white; text-align: center; }
+  .pin-logo h1 { font-family: 'Fraunces', serif; font-size: 30px; font-weight: 400; margin-bottom: 4px; }
+  .pin-logo span { font-size: 11px; opacity: 0.45; text-transform: uppercase; letter-spacing: 0.12em; }
+  .pin-veld {
+    background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.25);
+    color: white; padding: 13px 24px; border-radius: 8px; font-size: 22px;
+    text-align: center; width: 220px; letter-spacing: 6px; outline: none;
+    font-family: 'DM Sans', sans-serif;
+  }
+  .pin-veld::placeholder { color: rgba(255,255,255,0.25); letter-spacing: normal; font-size: 13px; }
+  .pin-veld:focus { border-color: var(--oranje); box-shadow: 0 0 0 3px rgba(224,122,48,0.3); }
+  .pin-fout { animation: pinSchud 0.4s ease; border-color: var(--rood) !important; }
+  @keyframes pinSchud { 0%,100%{transform:translateX(0)} 20%,60%{transform:translateX(-10px)} 40%,80%{transform:translateX(10px)} }
+
+  /* ─── SYNC INDICATOR ─── */
+  #sync-indicator { font-size: 11px; transition: color 0.3s; min-width: 140px; text-align: right; }
+
   /* ─── RESPONSIVE ─── */
   @media (max-width: 768px) {
     #sidebar { display: none; }
@@ -394,6 +418,11 @@
       <div class="nav-section">Systeem</div>
       <div class="nav-item" onclick="navigeer('export')" data-view="export">
         <span class="icon">💾</span> Export / Backup
+        <span class="nav-badge hidden" id="badge-backup" title="Backup overdue">!</span>
+      </div>
+      <div class="nav-item" onclick="navigeer('instellingen')" data-view="instellingen">
+        <span class="icon">⚙️</span> Instellingen
+        <span class="nav-badge hidden" id="badge-inst" title="Gist niet geconfigureerd">!</span>
       </div>
     </div>
     <div class="sidebar-footer">v1.0 · localStorage</div>
@@ -409,6 +438,7 @@
           style="width:220px;padding:7px 10px;border:1px solid var(--rand);border-radius:6px;font-size:13px;font-family:'DM Sans',sans-serif">
         <div id="topbar-zoek-resultaten" class="hidden" style="position:absolute;top:38px;left:0;width:320px;background:white;border:1px solid var(--rand);border-radius:8px;box-shadow:var(--schaduw-lg);max-height:360px;overflow-y:auto;z-index:500"></div>
       </div>
+      <span id="sync-indicator"></span>
       <div id="topbar-acties"></div>
     </div>
     <div id="content">
@@ -431,6 +461,23 @@
 
 <!-- TOASTS -->
 <div id="toast-container"></div>
+
+<!-- PIN SCHERM -->
+<div id="pin-scherm" class="hidden">
+  <div class="pin-logo">
+    <h1>Zincafé Zweeloo</h1>
+    <span>Deelnemersbeheer</span>
+  </div>
+  <div style="text-align:center;display:flex;flex-direction:column;align-items:center;gap:12px">
+    <input type="password" id="pin-invoer" class="pin-veld" placeholder="Voer PIN in"
+      maxlength="20" autocomplete="current-password"
+      onkeydown="if(event.key==='Enter')controleerPin()">
+    <button class="btn btn-oranje" style="width:220px;padding:11px" onclick="controleerPin()">
+      🔓 Ontgrendelen
+    </button>
+  </div>
+  <p style="color:rgba(255,255,255,0.25);font-size:11px">Zincafé Zweeloo · Deelnemersbeheer</p>
+</div>
 
 <script>
 'use strict';
@@ -469,6 +516,7 @@ function laadData() {
 function slaOp() {
   try {
     localStorage.setItem(STORE_KEY, JSON.stringify(db));
+    geplandeSyncNaarGist();
   } catch (e) {
     toast('Opslaan mislukt — localStorage vol?', 'fout');
   }
@@ -537,12 +585,14 @@ function navigeer(view) {
   const titels = {
     dashboard: 'Dashboard', activiteiten: 'Activiteiten', deelnemers: 'Deelnemers',
     aanmeldingen: 'Aanmeldingen', interesse: 'Interesse', presentie: 'Presentielijst',
-    communicatie: 'Communicatie', export: 'Export & Backup'
+    communicatie: 'Communicatie', export: 'Export & Backup', instellingen: 'Instellingen'
   };
   document.getElementById('topbar-titel').textContent = titels[view] || view;
   document.getElementById('topbar-acties').innerHTML = '';
   renderView(view);
   bijwerkBadges();
+  controleerBackupBadge();
+  controleerGistBadge();
 }
 
 function renderView(view) {
@@ -554,9 +604,10 @@ function renderView(view) {
     case 'aanmeldingen': c.innerHTML = renderAanmeldingen(); break;
     case 'interesse':    c.innerHTML = renderInteresse(); break;
     case 'presentie':    c.innerHTML = renderPresentie(); break;
-    case 'communicatie': c.innerHTML = renderCommunicatie(); break;
-    case 'export':       c.innerHTML = renderExport(); break;
-    default:             c.innerHTML = '<p>Onbekende pagina.</p>';
+    case 'communicatie':  c.innerHTML = renderCommunicatie(); break;
+    case 'export':        c.innerHTML = renderExport(); break;
+    case 'instellingen':  c.innerHTML = renderInstellingen(); break;
+    default:              c.innerHTML = '<p>Onbekende pagina.</p>';
   }
 }
 
@@ -3182,6 +3233,8 @@ function downloadJSON() {
   const a    = document.createElement('a');
   a.href = url; a.download = `zincafe-backup-${new Date().toISOString().split('T')[0]}.json`;
   a.click(); URL.revokeObjectURL(url);
+  registreerBackup();
+  controleerBackupBadge();
   toast('Backup gedownload.', 'succes');
 }
 
@@ -3241,8 +3294,755 @@ function wisAlleData() {
 }
 
 // ═══════════════════════════════════════════════
-// E-MAIL HELPER (betrouwbaar openen)
+// PIN BEVEILIGING
 // ═══════════════════════════════════════════════
+const PIN_KEY = 'zincafe_pin_v1';
+
+function initPinBeveiliging() {
+  const pin = localStorage.getItem(PIN_KEY);
+  if (pin) {
+    document.getElementById('pin-scherm').classList.remove('hidden');
+    setTimeout(() => document.getElementById('pin-invoer')?.focus(), 100);
+  }
+}
+
+function controleerPin() {
+  const invoer = document.getElementById('pin-invoer');
+  if (!invoer) return;
+  const opgeslagen = localStorage.getItem(PIN_KEY);
+  if (invoer.value === opgeslagen) {
+    document.getElementById('pin-scherm').classList.add('hidden');
+    invoer.value = '';
+  } else {
+    invoer.classList.add('pin-fout');
+    setTimeout(() => invoer.classList.remove('pin-fout'), 450);
+    invoer.value = '';
+    invoer.focus();
+    toast('Onjuiste PIN.', 'fout');
+  }
+}
+
+function openPinInstellen() {
+  const huidig = !!localStorage.getItem(PIN_KEY);
+  const html = `
+    ${huidig ? `<div class="form-group mb-16">
+      <label>Huidige PIN</label>
+      <input id="pin-huidig" type="password" placeholder="Huidige PIN" autocomplete="current-password">
+    </div>` : ''}
+    <div class="form-group mb-16">
+      <label>Nieuwe PIN <span class="form-hint">(minimaal 4 tekens — cijfers of letters)</span></label>
+      <input id="pin-nieuw" type="password" placeholder="Bijv. 1234" autocomplete="new-password">
+    </div>
+    <div class="form-group">
+      <label>Bevestig nieuwe PIN</label>
+      <input id="pin-herhaal" type="password" placeholder="Herhaal PIN" autocomplete="new-password">
+    </div>
+  `;
+  openModal(huidig ? 'PIN wijzigen' : 'PIN instellen', html, [
+    { label: 'Annuleren', cls: 'btn-ghost', action: 'sluitModal()' },
+    { label: 'Opslaan', cls: 'btn-primary', action: 'bevestigPinInstellen()' }
+  ]);
+}
+
+function bevestigPinInstellen() {
+  const huidig = localStorage.getItem(PIN_KEY);
+  if (huidig) {
+    const huidigInvoer = document.getElementById('pin-huidig')?.value || '';
+    if (huidigInvoer !== huidig) { toast('Huidige PIN is onjuist.', 'fout'); return; }
+  }
+  const nieuw    = document.getElementById('pin-nieuw').value;
+  const herhaal  = document.getElementById('pin-herhaal').value;
+  if (nieuw.length < 4) { toast('PIN moet minimaal 4 tekens zijn.', 'fout'); return; }
+  if (nieuw !== herhaal) { toast('PINs komen niet overeen.', 'fout'); return; }
+  localStorage.setItem(PIN_KEY, nieuw);
+  sluitModal();
+  navigeer('instellingen');
+  toast('PIN ingesteld. De admin is nu beveiligd.', 'succes');
+}
+
+function verwijderPin() {
+  if (!confirm('PIN verwijderen? De admin is dan toegankelijk voor iedereen met de URL.')) return;
+  localStorage.removeItem(PIN_KEY);
+  navigeer('instellingen');
+  toast('PIN verwijderd.', 'succes');
+}
+
+// ═══════════════════════════════════════════════
+// GIST SYNC (multi-device opslag)
+// ═══════════════════════════════════════════════
+const GIST_TOKEN_KEY = 'zincafe_gist_token';
+const GIST_ID_KEY    = 'zincafe_gist_id';
+let gistSyncBezig = false;
+let gistSyncTimer = null;
+
+function laadGistConfig() {
+  return {
+    token:  localStorage.getItem(GIST_TOKEN_KEY) || '',
+    gistId: localStorage.getItem(GIST_ID_KEY) || '',
+  };
+}
+
+function geplandeSyncNaarGist() {
+  const { token } = laadGistConfig();
+  if (!token) return;
+  clearTimeout(gistSyncTimer);
+  gistSyncTimer = setTimeout(() => slaOpNaarGist(), 4000);
+}
+
+function toonSyncIndicator(status) {
+  const el = document.getElementById('sync-indicator');
+  if (!el) return;
+  const c = {
+    bezig: ['⟳ Synchroniseren…', 'var(--geel)'],
+    ok:    ['✓ Gesynchroniseerd', 'var(--groen)'],
+    fout:  ['⚠ Sync mislukt', 'var(--rood)'],
+    uit:   ['', 'transparent'],
+  }[status] || ['', 'transparent'];
+  el.textContent = c[0]; el.style.color = c[1];
+  if (status === 'ok') setTimeout(() => toonSyncIndicator('uit'), 3000);
+}
+
+function getPubliekeActiviteiten() {
+  const vandaag = new Date().toISOString().split('T')[0];
+  return db.activiteiten
+    .filter(a => a.status === 'open' && a.datum >= vandaag)
+    .map(a => ({
+      id: a.id, naam: a.naam, type: a.type,
+      reeksNaam: a.reeksNaam || '', datum: a.datum, tijd: a.tijd,
+      locatie: a.locatie, maxDeelnemers: a.maxDeelnemers,
+      beschikbaar: a.maxDeelnemers - bevestigdAantal(a.id),
+      groepen: (a.groepen||[]).map(g => ({ id: g.id, naam: g.naam })),
+    }));
+}
+
+async function syncVanGist() {
+  const { token, gistId } = laadGistConfig();
+  if (!token || !gistId) return false;
+  try {
+    toonSyncIndicator('bezig');
+    const resp = await fetch(`https://api.github.com/gists/${gistId}`, {
+      headers: { 'Authorization': `token ${token}`, 'Accept': 'application/vnd.github.v3+json' }
+    });
+    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+    const gist = await resp.json();
+
+    const dbTekst = gist.files['zincafe-db.json']?.content;
+    if (dbTekst) {
+      const parsed = JSON.parse(dbTekst);
+      db = { ...db, ...parsed };
+      localStorage.setItem(STORE_KEY, JSON.stringify(db));
+    }
+
+    const inboxTekst = gist.files['zincafe-inbox.json']?.content;
+    if (inboxTekst) {
+      const inbox = JSON.parse(inboxTekst);
+      if (inbox.length > 0) verwerkInboxItems(inbox);
+    }
+
+    toonSyncIndicator('ok');
+    return true;
+  } catch(e) {
+    toonSyncIndicator('fout');
+    console.error('Gist sync fout:', e);
+    return false;
+  }
+}
+
+async function slaOpNaarGist(toonMelding = false) {
+  const { token, gistId } = laadGistConfig();
+  if (!token || gistSyncBezig) return;
+  gistSyncBezig = true;
+  try {
+    toonSyncIndicator('bezig');
+    const dbInhoud  = JSON.stringify(db, null, 2);
+    const actPubliek = JSON.stringify(getPubliekeActiviteiten(), null, 2);
+
+    if (!gistId) {
+      // Eerste keer: maak Gist aan
+      const resp = await fetch('https://api.github.com/gists', {
+        method: 'POST',
+        headers: { 'Authorization': `token ${token}`, 'Content-Type': 'application/json', 'Accept': 'application/vnd.github.v3+json' },
+        body: JSON.stringify({
+          description: 'Zincafé Zweeloo — Deelnemersbeheer',
+          public: false,
+          files: {
+            'zincafe-db.json':              { content: dbInhoud },
+            'zincafe-inbox.json':           { content: '[]' },
+            'zincafe-activiteiten.json':    { content: actPubliek },
+          }
+        })
+      });
+      if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+      const gist = await resp.json();
+      localStorage.setItem(GIST_ID_KEY, gist.id);
+      toonSyncIndicator('ok');
+      navigeer('instellingen');
+      toast('✅ Gist aangemaakt! Kopieer het Gist-ID hieronder voor het aanmeldformulier.', 'succes');
+    } else {
+      const resp = await fetch(`https://api.github.com/gists/${gistId}`, {
+        method: 'PATCH',
+        headers: { 'Authorization': `token ${token}`, 'Content-Type': 'application/json', 'Accept': 'application/vnd.github.v3+json' },
+        body: JSON.stringify({
+          files: {
+            'zincafe-db.json':           { content: dbInhoud },
+            'zincafe-activiteiten.json': { content: actPubliek },
+          }
+        })
+      });
+      if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+      toonSyncIndicator('ok');
+      if (toonMelding) toast('Opgeslagen in Gist.', 'succes');
+    }
+  } catch(e) {
+    toonSyncIndicator('fout');
+    toast('Gist opslaan mislukt: ' + e.message, 'fout');
+  } finally {
+    gistSyncBezig = false;
+  }
+}
+
+async function wisGistInbox() {
+  const { token, gistId } = laadGistConfig();
+  if (!token || !gistId) return;
+  try {
+    await fetch(`https://api.github.com/gists/${gistId}`, {
+      method: 'PATCH',
+      headers: { 'Authorization': `token ${token}`, 'Content-Type': 'application/json', 'Accept': 'application/vnd.github.v3+json' },
+      body: JSON.stringify({ files: { 'zincafe-inbox.json': { content: '[]' } } })
+    });
+  } catch(e) { console.warn('Inbox wissen mislukt:', e); }
+}
+
+function verwerkInboxItems(inbox) {
+  db.interesses = db.interesses || [];
+  let nieuw = 0;
+  inbox.forEach(item => {
+    if (!item._id) return;
+    const al = db.interesses.some(i => i._inboxId === item._id);
+    if (al) return;
+    db.interesses.push({
+      id: uid(), _inboxId: item._id,
+      naam: item.naam || '', email: item.email || '', telefoon: item.telefoon || '',
+      bijeenkomst: item.activiteit || '', groepVoorkeur: item.groepVoorkeur || '',
+      opmerking: [item.avondVoorkeur ? 'Voorkeur: ' + item.avondVoorkeur : '', item.opmerking || ''].filter(Boolean).join(' · '),
+      status: 'nieuw', aangemeld: item._aangemeld || nu(),
+      _vanWebformulier: true,
+    });
+    nieuw++;
+  });
+  if (nieuw > 0) {
+    localStorage.setItem(STORE_KEY, JSON.stringify(db));
+    bijwerkBadges();
+    toast(`${nieuw} nieuwe aanmelding(en) via het formulier ontvangen!`, 'succes');
+    wisGistInbox();
+  }
+}
+
+function slaGistInstellingenOp() {
+  const token  = document.getElementById('inst-gist-token')?.value.trim();
+  const gistId = document.getElementById('inst-gist-id')?.value.trim();
+  if (token)  localStorage.setItem(GIST_TOKEN_KEY, token);
+  if (gistId) localStorage.setItem(GIST_ID_KEY, gistId);
+  if (!gistId && token) {
+    // Geen Gist ID → maak nieuwe aan
+    slaOpNaarGist();
+  } else {
+    slaOpNaarGist(true);
+  }
+  navigeer('instellingen');
+}
+
+function controleerGistBadge() {
+  const { token } = laadGistConfig();
+  const badge = document.getElementById('badge-inst');
+  if (badge) badge.classList.toggle('hidden', !!token);
+}
+
+// ═══════════════════════════════════════════════
+// BACKUP HERINNERING
+// ═══════════════════════════════════════════════
+const BACKUP_DATUM_KEY = 'zincafe_laatste_backup';
+const BACKUP_WAARSCHUW_DAGEN = 10;
+
+function registreerBackup() {
+  localStorage.setItem(BACKUP_DATUM_KEY, nu());
+}
+
+function backupDagenGeleden() {
+  const laatste = localStorage.getItem(BACKUP_DATUM_KEY);
+  if (!laatste) return 999;
+  return Math.floor((Date.now() - new Date(laatste).getTime()) / 86400000);
+}
+
+function controleerBackupBadge() {
+  const badge = document.getElementById('badge-backup');
+  if (badge) badge.classList.toggle('hidden', backupDagenGeleden() < BACKUP_WAARSCHUW_DAGEN);
+}
+
+// ═══════════════════════════════════════════════
+// INSTELLINGEN
+// ═══════════════════════════════════════════════
+function renderInstellingen() {
+  const { token, gistId } = laadGistConfig();
+  const heeftPin  = !!localStorage.getItem(PIN_KEY);
+  const heeftGist = !!token;
+  const dagen     = backupDagenGeleden();
+
+  return `
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;align-items:start">
+
+      <!-- PIN -->
+      <div class="card">
+        <div class="card-title">🔒 PIN-beveiliging</div>
+        <p style="font-size:13px;color:var(--tekst-zacht);margin-bottom:16px">
+          Beschermt de admin met een PIN. Iedereen die de URL opent, moet de PIN invoeren.<br>
+          <span class="form-hint">De PIN wordt lokaal opgeslagen in deze browser — stel hem op elk apparaat apart in.</span>
+        </p>
+        ${heeftPin
+          ? `<div style="background:var(--groen-licht);border-radius:8px;padding:10px 14px;font-size:13px;color:var(--groen);margin-bottom:14px">✅ PIN is ingesteld</div>
+             <div class="flex gap-8">
+               <button class="btn btn-outline" onclick="openPinInstellen()">✏️ PIN wijzigen</button>
+               <button class="btn btn-danger" onclick="verwijderPin()">🗑 Verwijderen</button>
+             </div>`
+          : `<div style="background:var(--geel-licht);border-radius:8px;padding:10px 14px;font-size:13px;color:var(--geel);margin-bottom:14px">⚠️ Geen PIN ingesteld — admin is publiek toegankelijk</div>
+             <button class="btn btn-primary" onclick="openPinInstellen()">🔒 PIN instellen</button>`
+        }
+      </div>
+
+      <!-- GIST SYNC -->
+      <div class="card">
+        <div class="card-title">☁️ Cloud sync (GitHub Gist)</div>
+        <p style="font-size:13px;color:var(--tekst-zacht);margin-bottom:14px">
+          Sla je data op in een privé GitHub Gist — zo werkt de admin op elk apparaat en ontvang je aanmeldingen van de website direct.
+        </p>
+        ${heeftGist
+          ? `<div style="background:var(--groen-licht);border-radius:8px;padding:10px 14px;font-size:13px;color:var(--groen);margin-bottom:14px">✅ Gist sync actief</div>`
+          : `<div style="background:var(--geel-licht);border-radius:8px;padding:10px 14px;font-size:13px;color:var(--geel);margin-bottom:14px">
+               ⚠️ Nog niet geconfigureerd — data staat alleen in deze browser.<br><br>
+               <strong>Instellen:</strong> ga naar <em>github.com → Settings → Developer settings → Personal access tokens → Tokens (classic)</em> → maak een token met alleen <strong>gist</strong>-scope.
+             </div>`
+        }
+        <div class="form-row">
+          <div class="form-group">
+            <label>GitHub Token <span class="form-hint">(ghp_…)</span></label>
+            <input id="inst-gist-token" type="password" value="${token ? '••••••••••••' : ''}" placeholder="ghp_xxxxxxxxxxxxxxxx"
+              onfocus="if(this.value.startsWith('••'))this.value=''">
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Gist ID <span class="form-hint">(leeg laten → wordt automatisch aangemaakt)</span></label>
+            <input id="inst-gist-id" value="${esc(gistId)}" placeholder="Wordt automatisch ingevuld">
+          </div>
+        </div>
+        <div class="flex gap-8">
+          <button class="btn btn-primary" onclick="slaGistInstellingenOp()">💾 Opslaan & verbinden</button>
+          ${heeftGist ? `<button class="btn btn-outline" onclick="syncVanGist().then(()=>{navigeer('instellingen');toast('Gesynchroniseerd vanuit Gist.','succes')})">⟳ Nu synchroniseren</button>` : ''}
+        </div>
+        ${gistId ? `
+          <hr class="divider">
+          <div class="form-group">
+            <label>Gist ID <span class="form-hint">(nodig voor het aanmeldformulier)</span></label>
+            <div style="display:flex;gap:6px">
+              <input readonly value="${esc(gistId)}" style="background:var(--grijs-licht);flex:1;font-family:monospace;font-size:12px">
+              <button class="btn btn-ghost btn-sm" onclick="navigator.clipboard.writeText('${esc(gistId)}').then(()=>toast('Gekopieerd!','succes'))">📋</button>
+            </div>
+          </div>` : ''}
+      </div>
+
+      <!-- BACKUP STATUS -->
+      <div class="card ${dagen >= BACKUP_WAARSCHUW_DAGEN ? '' : ''}">
+        <div class="card-title">💾 Backup status</div>
+        ${dagen >= BACKUP_WAARSCHUW_DAGEN
+          ? `<div style="background:var(--rood-licht);border-radius:8px;padding:10px 14px;font-size:13px;color:var(--rood);margin-bottom:14px">
+               ⚠️ Laatste backup was <strong>${dagen === 999 ? 'nog nooit' : dagen + ' dagen geleden'}</strong>. Download een nieuwe backup!
+             </div>`
+          : `<div style="background:var(--groen-licht);border-radius:8px;padding:10px 14px;font-size:13px;color:var(--groen);margin-bottom:14px">
+               ✅ Laatste backup: <strong>${dagen} dag${dagen === 1 ? '' : 'en'} geleden</strong>
+             </div>`
+        }
+        <button class="btn btn-primary" onclick="downloadJSON()">⬇️ Download backup nu</button>
+        <p class="form-hint mt-8">Tip: download elke week een backup naar je bureaublad als reservekopie naast de Gist sync.</p>
+      </div>
+
+      <!-- AANMELDFORMULIER DOWNLOAD -->
+      <div class="card">
+        <div class="card-title">📝 Aanmeldformulier website</div>
+        <p style="font-size:13px;color:var(--tekst-zacht);margin-bottom:14px">
+          Genereer het aanmeldformulier als HTML-bestand — upload dit daarna naar <strong>zincafe-zweeloo.nl</strong> (niet naar GitHub Pages, want jouw token zit erin).
+          Bezoekers kunnen zich aanmelden of interesse aangeven; de aanmeldingen verschijnen automatisch in de <strong>Interesse</strong>-tab.
+        </p>
+        ${gistId
+          ? `<button class="btn btn-primary" onclick="genereerEnDownloadFormulier()">⬇️ Download aanmelden.html</button>
+             <p class="form-hint mt-8">Na elke wijziging in je activiteiten wordt de lijst automatisch bijgewerkt in de Gist — je hoeft het formulier niet opnieuw te downloaden.</p>`
+          : `<div style="background:var(--geel-licht);border-radius:8px;padding:10px 14px;font-size:13px;color:var(--geel)">Configureer eerst de Gist sync hierboven.</div>`
+        }
+      </div>
+
+      <!-- CAFÉ INFORMATIE -->
+      <div class="card">
+        <div class="card-title">🏠 Café-informatie</div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Naam organisatie</label>
+            <input id="inst-naam" value="${esc(db.instellingen.naam || '')}">
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>E-mailadres</label>
+            <input id="inst-email" value="${esc(db.instellingen.email || '')}">
+          </div>
+        </div>
+        <button class="btn btn-primary" onclick="slaOrganisatieOp()">💾 Opslaan</button>
+      </div>
+
+    </div>
+  `;
+}
+
+function slaOrganisatieOp() {
+  db.instellingen.naam  = document.getElementById('inst-naam').value.trim();
+  db.instellingen.email = document.getElementById('inst-email').value.trim();
+  slaOp();
+  toast('Instellingen opgeslagen.', 'succes');
+}
+
+// ═══════════════════════════════════════════════
+// AANMELDFORMULIER GENERATOR
+// ═══════════════════════════════════════════════
+function genereerEnDownloadFormulier() {
+  const { token, gistId } = laadGistConfig();
+  if (!token || !gistId) {
+    toast('Configureer eerst de Gist sync onder Instellingen.', 'fout');
+    return;
+  }
+  const html = aanmeldFormulierTemplate(gistId, token);
+  const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href = url;
+  a.download = 'aanmelden.html';
+  a.click();
+  URL.revokeObjectURL(url);
+  toast('aanmelden.html gedownload — upload dit bestand naar zincafe-zweeloo.nl.', 'succes');
+}
+
+function aanmeldFormulierTemplate(gistId, token) {
+  return `<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Aanmelden — Zincafé Zweeloo</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,wght@0,300;0,400;0,600;1,300;1,400&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --blauw: #1a3a5c; --blauw-mid: #2a5a8c; --blauw-licht: #e8f0f8;
+    --oranje: #e07a30; --wit: #fafaf8; --rand: #e2dfd8;
+    --grijs-licht: #f2f1ee; --grijs-donker: #7a7470; --tekst: #1c1a18;
+    --groen: #2d7a4a; --groen-licht: #e6f4ec; --rood: #c0392b; --rood-licht: #fdecea;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'DM Sans', sans-serif; background: var(--grijs-licht); color: var(--tekst); font-size: 15px; line-height: 1.6; min-height: 100vh; }
+  header { background: var(--blauw); color: white; padding: 28px 24px 24px; text-align: center; }
+  header h1 { font-family: 'Fraunces', serif; font-size: 26px; font-weight: 400; }
+  header p { font-size: 13px; opacity: 0.55; margin-top: 4px; text-transform: uppercase; letter-spacing: 0.1em; }
+  .container { max-width: 560px; margin: 36px auto; padding: 0 16px 60px; }
+  .card { background: white; border: 1px solid var(--rand); border-radius: 12px; padding: 28px; box-shadow: 0 2px 12px rgba(26,58,92,0.07); }
+  .card-titel { font-family: 'Fraunces', serif; font-size: 20px; color: var(--blauw); margin-bottom: 20px; font-weight: 400; }
+  .form-group { margin-bottom: 18px; }
+  label { display: block; font-size: 13px; font-weight: 500; color: var(--grijs-donker); margin-bottom: 5px; }
+  input[type=text], input[type=email], input[type=tel], select, textarea {
+    width: 100%; padding: 10px 12px; border: 1px solid var(--rand); border-radius: 7px;
+    font-family: 'DM Sans', sans-serif; font-size: 14px; color: var(--tekst);
+    background: white; outline: none; transition: border-color 0.15s;
+  }
+  input:focus, select:focus, textarea:focus { border-color: var(--blauw-mid); box-shadow: 0 0 0 3px rgba(42,90,140,0.09); }
+  textarea { resize: vertical; min-height: 80px; }
+  .type-keuze { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 22px; }
+  .type-optie { border: 2px solid var(--rand); border-radius: 9px; padding: 14px 12px; cursor: pointer; text-align: center; transition: all 0.15s; }
+  .type-optie input { display: none; }
+  .type-optie:hover { border-color: var(--blauw-mid); background: var(--blauw-licht); }
+  .type-optie.geselecteerd { border-color: var(--oranje); background: #fdf0e4; }
+  .type-optie .ikon { font-size: 22px; margin-bottom: 4px; }
+  .type-optie .label { font-size: 13px; font-weight: 600; color: var(--blauw); }
+  .type-optie .omschr { font-size: 11px; color: var(--grijs-donker); margin-top: 2px; }
+  .avond-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .avond-optie { display: flex; align-items: center; gap: 8px; padding: 8px 10px; border: 1px solid var(--rand); border-radius: 6px; cursor: pointer; font-size: 13px; transition: all 0.12s; }
+  .avond-optie:hover { background: var(--blauw-licht); border-color: var(--blauw-mid); }
+  .avond-optie input[type=checkbox]:checked + span { font-weight: 600; color: var(--blauw); }
+  .avond-optie:has(input:checked) { background: var(--blauw-licht); border-color: var(--blauw-mid); }
+  .privacyregel { display: flex; align-items: flex-start; gap: 10px; font-size: 12px; color: var(--grijs-donker); margin-top: 18px; }
+  .privacyregel input { margin-top: 2px; flex-shrink: 0; width: 16px; height: 16px; }
+  .btn-verstuur { width: 100%; padding: 13px; background: var(--oranje); color: white; border: none; border-radius: 8px; font-family: 'DM Sans', sans-serif; font-size: 15px; font-weight: 600; cursor: pointer; margin-top: 18px; transition: background 0.15s; }
+  .btn-verstuur:hover { background: #c96a20; }
+  .btn-verstuur:disabled { background: var(--grijs-donker); cursor: not-allowed; }
+  .hint { font-size: 12px; color: var(--grijs-donker); margin-top: 4px; }
+  #bevestiging { display: none; text-align: center; padding: 40px 20px; }
+  #bevestiging .groot { font-size: 48px; margin-bottom: 16px; }
+  #bevestiging h2 { font-family: 'Fraunces', serif; font-size: 22px; color: var(--blauw); margin-bottom: 10px; font-weight: 400; }
+  #bevestiging p { color: var(--grijs-donker); font-size: 14px; }
+  .fout-melding { background: var(--rood-licht); color: var(--rood); border-radius: 7px; padding: 10px 14px; font-size: 13px; margin-top: 12px; display: none; }
+  .verborgen { display: none !important; }
+  select option:disabled { color: var(--grijs-donker); }
+</style>
+</head>
+<body>
+<header>
+  <h1>Zincafé Zweeloo</h1>
+  <p>Aanmelden & interesse</p>
+</header>
+<div class="container">
+  <div class="card" id="formulier-card">
+    <h2 class="card-titel">Jouw aanmelding</h2>
+
+    <!-- Type keuze -->
+    <div class="type-keuze" id="type-keuze">
+      <label class="type-optie geselecteerd" onclick="kiesType('aanmelden',this)">
+        <input type="radio" name="type" value="aanmelden" checked>
+        <div class="ikon">📋</div>
+        <div class="label">Aanmelden</div>
+        <div class="omschr">Voor een activiteit</div>
+      </label>
+      <label class="type-optie" onclick="kiesType('interesse',this)">
+        <input type="radio" name="type" value="interesse">
+        <div class="ikon">📨</div>
+        <div class="label">Op de hoogte</div>
+        <div class="omschr">Houd me geïnformeerd</div>
+      </label>
+    </div>
+
+    <!-- Activiteit (alleen bij aanmelden) -->
+    <div id="sectie-activiteit">
+      <div class="form-group">
+        <label>Activiteit *</label>
+        <select id="f-activiteit" onchange="activiteitGekozen()">
+          <option value="">— Bezig met laden… —</option>
+        </select>
+      </div>
+      <div class="form-group verborgen" id="sectie-avonden">
+        <label>Voorkeur avonden <span style="font-weight:400;color:var(--grijs-donker)">(meerdere mogelijk)</span></label>
+        <div class="avond-grid" id="avond-grid"></div>
+      </div>
+      <div class="form-group verborgen" id="sectie-groep">
+        <label>Groepsvoorkeur</label>
+        <select id="f-groep">
+          <option value="">Geen voorkeur</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- Interesse bericht -->
+    <div id="sectie-interesse-tekst" class="verborgen" style="background:var(--blauw-licht);border-radius:8px;padding:12px 14px;font-size:13px;color:var(--blauw);margin-bottom:18px">
+      Je kunt je hier aanmelden om op de hoogte te blijven van nieuwe activiteiten van Zincafé Zweeloo. We sturen je dan een berichtje als er iets nieuws staat.
+    </div>
+
+    <!-- Contactgegevens -->
+    <div class="form-group">
+      <label>Voornaam en achternaam *</label>
+      <input type="text" id="f-naam" placeholder="Bijv. Anna de Vries" required>
+    </div>
+    <div class="form-group">
+      <label>E-mailadres *</label>
+      <input type="email" id="f-email" placeholder="jouw@email.nl" required>
+    </div>
+    <div class="form-group">
+      <label>Telefoonnummer</label>
+      <input type="tel" id="f-telefoon" placeholder="06 12345678">
+    </div>
+    <div class="form-group">
+      <label>Opmerking of bijzonderheden</label>
+      <textarea id="f-opmerking" placeholder="Eventuele vragen, dieetwensen, bijzonderheden…"></textarea>
+    </div>
+
+    <!-- AVG -->
+    <label class="privacyregel">
+      <input type="checkbox" id="f-privacy" required>
+      <span>Ik ga akkoord met de <a href="/privacyverklaring" style="color:var(--blauw-mid)">privacyverklaring</a> van Zincafé Zweeloo. Mijn gegevens worden alleen gebruikt voor communicatie over activiteiten.</span>
+    </label>
+
+    <button class="btn-verstuur" id="btn-verstuur" onclick="verstuurFormulier()" disabled>
+      Verstuur aanmelding →
+    </button>
+    <div class="fout-melding" id="fout-melding"></div>
+  </div>
+
+  <div class="card" id="bevestiging">
+    <div class="groot">✅</div>
+    <h2>Ontvangen!</h2>
+    <p id="bevestiging-tekst">Je aanmelding is ontvangen. We nemen zo snel mogelijk contact met je op.</p>
+  </div>
+</div>
+
+<script>
+'use strict';
+const GIST_ID    = '${gistId}';
+const GIST_TOKEN = '${token}';
+let activiteiten = [];
+let gekozenType  = 'aanmelden';
+
+async function laadActiviteiten() {
+  try {
+    const resp = await fetch(\`https://api.github.com/gists/\${GIST_ID}\`, {
+      headers: { 'Authorization': \`token \${GIST_TOKEN}\`, 'Accept': 'application/vnd.github.v3+json' }
+    });
+    if (!resp.ok) return;
+    const gist = await resp.json();
+    const tekst = gist.files['zincafe-activiteiten.json']?.content;
+    if (!tekst) return;
+    activiteiten = JSON.parse(tekst);
+    vulActiviteitenDropdown();
+  } catch(e) { console.warn('Activiteiten laden mislukt:', e); }
+}
+
+function vulActiviteitenDropdown() {
+  const sel = document.getElementById('f-activiteit');
+  if (!sel) return;
+  if (activiteiten.length === 0) {
+    sel.innerHTML = '<option value="">Geen activiteiten beschikbaar</option>';
+    return;
+  }
+  sel.innerHTML = '<option value="">— Kies een activiteit —</option>' +
+    activiteiten.map(a => {
+      const vol = a.beschikbaar <= 0;
+      return \`<option value="\${a.id}" \${vol ? 'disabled' : ''}>\${a.naam} · \${formatDatum(a.datum)}\${vol ? ' (VOL)' : ''}</option>\`;
+    }).join('');
+}
+
+function formatDatum(iso) {
+  if (!iso) return '';
+  return new Date(iso + 'T00:00:00').toLocaleDateString('nl-NL', { day: 'numeric', month: 'long' });
+}
+
+function kiesType(type, el) {
+  gekozenType = type;
+  document.querySelectorAll('.type-optie').forEach(o => o.classList.remove('geselecteerd'));
+  el.classList.add('geselecteerd');
+  const isAanmelden = type === 'aanmelden';
+  document.getElementById('sectie-activiteit').classList.toggle('verborgen', !isAanmelden);
+  document.getElementById('sectie-interesse-tekst').classList.toggle('verborgen', isAanmelden);
+  controleerKnop();
+}
+
+function activiteitGekozen() {
+  const actId = document.getElementById('f-activiteit').value;
+  const act   = activiteiten.find(a => a.id === actId);
+
+  // Avonden tonen als het een reeks is
+  const sectieAvonden = document.getElementById('sectie-avonden');
+  const grid = document.getElementById('avond-grid');
+  if (act && act.type === 'reeks' && activiteiten.filter(a => a.reeksNaam === act.reeksNaam).length > 1) {
+    const reeksAvonden = activiteiten.filter(a => a.reeksNaam === act.reeksNaam);
+    grid.innerHTML = reeksAvonden.map(a =>
+      \`<label class="avond-optie">
+        <input type="checkbox" name="avond" value="\${a.id}" checked>
+        <span>\${formatDatum(a.datum)}</span>
+      </label>\`
+    ).join('');
+    sectieAvonden.classList.remove('verborgen');
+  } else {
+    sectieAvonden.classList.add('verborgen');
+    grid.innerHTML = '';
+  }
+
+  // Groepen tonen
+  const sectieGroep = document.getElementById('sectie-groep');
+  const grpSel = document.getElementById('f-groep');
+  if (act && act.groepen && act.groepen.length > 0) {
+    grpSel.innerHTML = '<option value="">Geen voorkeur</option>' +
+      act.groepen.map(g => \`<option value="\${g.id}">\${g.naam}</option>\`).join('');
+    sectieGroep.classList.remove('verborgen');
+  } else {
+    sectieGroep.classList.add('verborgen');
+  }
+  controleerKnop();
+}
+
+function controleerKnop() {
+  const privacy = document.getElementById('f-privacy').checked;
+  const naam    = document.getElementById('f-naam').value.trim();
+  const email   = document.getElementById('f-email').value.trim();
+  const actId   = document.getElementById('f-activiteit').value;
+  const ok = privacy && naam && email && (gekozenType === 'interesse' || actId);
+  document.getElementById('btn-verstuur').disabled = !ok;
+}
+
+document.addEventListener('input', controleerKnop);
+document.addEventListener('change', controleerKnop);
+
+async function verstuurFormulier() {
+  const naam     = document.getElementById('f-naam').value.trim();
+  const email    = document.getElementById('f-email').value.trim();
+  const telefoon = document.getElementById('f-telefoon').value.trim();
+  const opmerking= document.getElementById('f-opmerking').value.trim();
+  const actId    = document.getElementById('f-activiteit').value;
+  const act      = activiteiten.find(a => a.id === actId);
+  const groepId  = document.getElementById('f-groep').value;
+
+  const geselecteerdeAvonden = [...document.querySelectorAll('input[name=avond]:checked')].map(cb => {
+    const a = activiteiten.find(x => x.id === cb.value);
+    return a ? formatDatum(a.datum) : cb.value;
+  });
+
+  const item = {
+    _id:         Date.now().toString(36) + Math.random().toString(36).slice(2,5),
+    _aangemeld:  new Date().toISOString(),
+    type:        gekozenType,
+    naam, email, telefoon, opmerking,
+    activiteit:  act?.naam || '',
+    activiteitId: actId,
+    avondVoorkeur: geselecteerdeAvonden.join(', '),
+    groepVoorkeur: act?.groepen?.find(g => g.id === groepId)?.naam || '',
+  };
+
+  const btn = document.getElementById('btn-verstuur');
+  const fout = document.getElementById('fout-melding');
+  btn.disabled = true;
+  btn.textContent = 'Bezig…';
+  fout.style.display = 'none';
+
+  try {
+    // Haal huidige inbox op
+    const resp = await fetch(\`https://api.github.com/gists/\${GIST_ID}\`, {
+      headers: { 'Authorization': \`token \${GIST_TOKEN}\`, 'Accept': 'application/vnd.github.v3+json' }
+    });
+    if (!resp.ok) throw new Error('Verbinding mislukt');
+    const gist    = await resp.json();
+    const huidig  = JSON.parse(gist.files['zincafe-inbox.json']?.content || '[]');
+    huidig.push(item);
+
+    // Sla bijgewerkte inbox op
+    const patch = await fetch(\`https://api.github.com/gists/\${GIST_ID}\`, {
+      method: 'PATCH',
+      headers: { 'Authorization': \`token \${GIST_TOKEN}\`, 'Content-Type': 'application/json', 'Accept': 'application/vnd.github.v3+json' },
+      body: JSON.stringify({ files: { 'zincafe-inbox.json': { content: JSON.stringify(huidig, null, 2) } } })
+    });
+    if (!patch.ok) throw new Error('Opslaan mislukt');
+
+    // Toon bevestiging
+    document.getElementById('formulier-card').style.display = 'none';
+    const bev = document.getElementById('bevestiging');
+    bev.style.display = 'block';
+    document.getElementById('bevestiging-tekst').textContent = gekozenType === 'interesse'
+      ? 'We houden je op de hoogte van nieuwe activiteiten van Zincafé Zweeloo!'
+      : \`Je aanmelding voor "\${act?.naam || 'de activiteit'}" is ontvangen. We bevestigen zo snel mogelijk.\`;
+  } catch(e) {
+    fout.textContent = 'Er ging iets mis bij het versturen. Probeer het opnieuw of stuur een e-mail naar info@zincafe-zweeloo.nl.';
+    fout.style.display = 'block';
+    btn.disabled = false;
+    btn.textContent = 'Verstuur aanmelding →';
+  }
+}
+
+laadActiviteiten();
+</script>
+</body>
+</html>`;
+}
+
+
 let mailtoBuffer = null;
 
 function openMailtoVenster(emailsArr, onderwerp, bericht, logOmschr, kanaal, aantalOntvangers) {
@@ -3353,6 +4153,14 @@ function esc(str) {
 laadData();
 navigeer('dashboard');
 bijwerkBadges();
+controleerBackupBadge();
+controleerGistBadge();
+initPinBeveiliging();
+// Achtergrond sync vanuit Gist (stilletjes, na kort uitstel)
+setTimeout(async () => {
+  const gelukt = await syncVanGist();
+  if (gelukt) { navigeer(huidigView); bijwerkBadges(); }
+}, 800);
 
 // Communicatie: live preview update
 document.addEventListener('change', e => {
