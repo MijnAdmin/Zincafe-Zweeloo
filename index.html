@@ -1717,6 +1717,13 @@ function aanmeldingFormHtml(voorActId, bestaand) {
     </div>
     <div class="form-row">
       <div class="form-group">
+        <label>Voorkeur avonden</label>
+        <input id="a-avond" value="${esc(bestaand?.avondVoorkeur||'')}" placeholder="bijv. Maandag, Woensdag">
+        <span class="form-hint">Zoals opgegeven in het aanmeldformulier</span>
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
         <label>Notities</label>
         <textarea id="a-notities">${esc(notities)}</textarea>
       </div>
@@ -1866,6 +1873,7 @@ function slaAanmeldingOp(bestaandId) {
   const grpId  = document.getElementById('a-grp').value;
   const status = document.getElementById('a-status').value;
   const bron   = document.getElementById('a-bron').value;
+  const avondVoorkeur = (document.getElementById('a-avond')?.value||'').trim();
   const notities = document.getElementById('a-notities').value.trim();
 
   if (!bestaandId && (!dlId || !actId)) { toast('Kies een deelnemer en activiteit.', 'fout'); return; }
@@ -1877,10 +1885,11 @@ function slaAanmeldingOp(bestaandId) {
 
   if (bestaandId) {
     const aanm = getAanm(bestaandId);
-    aanm.groepId  = grpId || null;
-    aanm.status   = status;
-    aanm.bron     = bron;
-    aanm.notities = notities;
+    aanm.groepId      = grpId || null;
+    aanm.status       = status;
+    aanm.bron         = bron;
+    aanm.avondVoorkeur = avondVoorkeur;
+    aanm.notities     = notities;
     aanm.statusHistory = aanm.statusHistory || [];
     aanm.statusHistory.push({ status, datum: nu() });
     slaOp(); sluitModal(); navigeer('aanmeldingen'); toast('Aanmelding bijgewerkt.', 'succes');
@@ -1896,7 +1905,7 @@ function slaAanmeldingOp(bestaandId) {
 
   db.aanmeldingen.push({ id:uid(), deelnemerId:dlId, activiteitId:actId,
     groepId: grpId||null, status: effectiefStatus, bron, aangemeld: nu(),
-    statusHistory: [{status: effectiefStatus, datum: nu()}], notities });
+    statusHistory: [{status: effectiefStatus, datum: nu()}], avondVoorkeur, notities });
   slaOp(); sluitModal(); navigeer('aanmeldingen'); toast('Aanmelding opgeslagen.', 'succes');
 }
 
@@ -3078,6 +3087,7 @@ function updateWachtlijstView() {
         <div style="flex:1">
           <strong>${esc(dl?.voornaam||'')} ${esc(dl?.achternaam||'')}</strong>
           ${dl?.telefoon ? `<span class="text-muted" style="margin-left:8px;font-size:12px">📞 ${esc(dl.telefoon)}</span>` : ''}
+          ${a.avondVoorkeur ? `<br><span class="text-muted" style="font-size:12px">🌙 ${esc(a.avondVoorkeur)}</span>` : ''}
           ${a.notities ? `<br><span class="text-muted" style="font-size:12px">📝 ${esc(a.notities)}</span>` : ''}
         </div>
         <span class="text-muted" style="font-size:11px">${formatDatum(a.aangemeld)}</span>
