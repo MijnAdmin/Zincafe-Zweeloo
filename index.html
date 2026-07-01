@@ -494,7 +494,7 @@ let db = {
   interesses: [],
   instellingen: {
     naam: 'Zincafé Zweeloo',
-    email: 'info@zincafe-zweeloo.nl',
+    email: 'zincafe-zweeloo@proton.me',
   }
 };
 
@@ -4029,7 +4029,7 @@ async function verstuurFormulier() {
       ? 'We houden je op de hoogte van nieuwe activiteiten van Zincafé Zweeloo!'
       : \`Je aanmelding voor "\${act?.naam || 'de activiteit'}" is ontvangen. We bevestigen zo snel mogelijk.\`;
   } catch(e) {
-    fout.textContent = 'Er ging iets mis bij het versturen. Probeer het opnieuw of stuur een e-mail naar info@zincafe-zweeloo.nl.';
+    fout.textContent = 'Er ging iets mis bij het versturen. Probeer het opnieuw of stuur een e-mail naar zincafe-zweeloo@proton.me.';
     fout.style.display = 'block';
     btn.disabled = false;
     btn.textContent = 'Verstuur aanmelding →';
