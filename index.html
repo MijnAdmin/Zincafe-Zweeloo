@@ -137,7 +137,9 @@
     background: white; border: 1px solid var(--rand); border-radius: 10px;
     padding: 16px 18px; box-shadow: var(--schaduw);
     border-top: 3px solid var(--blauw-mid);
+    transition: box-shadow 0.15s, transform 0.15s;
   }
+  .stat-card[onclick]:hover { box-shadow: var(--schaduw-lg); transform: translateY(-1px); }
   .stat-card.oranje { border-top-color: var(--oranje); }
   .stat-card.groen  { border-top-color: var(--groen); }
   .stat-card.rood   { border-top-color: var(--rood); }
@@ -378,6 +380,10 @@
         <span class="icon">📋</span> Aanmeldingen
         <span class="nav-badge" id="badge-nieuw">0</span>
       </div>
+      <div class="nav-item" onclick="navigeer('interesse')" data-view="interesse">
+        <span class="icon">📨</span> Interesse
+        <span class="nav-badge" id="badge-interesse">0</span>
+      </div>
       <div class="nav-section">Beheer</div>
       <div class="nav-item" onclick="navigeer('presentie')" data-view="presentie">
         <span class="icon">✅</span> Presentielijst
@@ -397,6 +403,12 @@
   <div id="main">
     <div id="topbar">
       <h2 id="topbar-titel">Dashboard</h2>
+      <div style="position:relative">
+        <input type="text" id="topbar-zoek" placeholder="🔍 Zoek deelnemer…" autocomplete="off"
+          oninput="globaalZoek(this.value)" onfocus="globaalZoek(this.value)"
+          style="width:220px;padding:7px 10px;border:1px solid var(--rand);border-radius:6px;font-size:13px;font-family:'DM Sans',sans-serif">
+        <div id="topbar-zoek-resultaten" class="hidden" style="position:absolute;top:38px;left:0;width:320px;background:white;border:1px solid var(--rand);border-radius:8px;box-shadow:var(--schaduw-lg);max-height:360px;overflow-y:auto;z-index:500"></div>
+      </div>
       <div id="topbar-acties"></div>
     </div>
     <div id="content">
@@ -432,6 +444,7 @@ let db = {
   activiteiten: [],
   deelnemers: [],
   aanmeldingen: [],
+  interesses: [],
   instellingen: {
     naam: 'Zincafé Zweeloo',
     email: 'info@zincafe-zweeloo.nl',
@@ -523,7 +536,7 @@ function navigeer(view) {
   });
   const titels = {
     dashboard: 'Dashboard', activiteiten: 'Activiteiten', deelnemers: 'Deelnemers',
-    aanmeldingen: 'Aanmeldingen', presentie: 'Presentielijst',
+    aanmeldingen: 'Aanmeldingen', interesse: 'Interesse', presentie: 'Presentielijst',
     communicatie: 'Communicatie', export: 'Export & Backup'
   };
   document.getElementById('topbar-titel').textContent = titels[view] || view;
@@ -539,6 +552,7 @@ function renderView(view) {
     case 'activiteiten': c.innerHTML = renderActiviteiten(); break;
     case 'deelnemers':   c.innerHTML = renderDeelnemers(); break;
     case 'aanmeldingen': c.innerHTML = renderAanmeldingen(); break;
+    case 'interesse':    c.innerHTML = renderInteresse(); break;
     case 'presentie':    c.innerHTML = renderPresentie(); break;
     case 'communicatie': c.innerHTML = renderCommunicatie(); break;
     case 'export':       c.innerHTML = renderExport(); break;
@@ -550,6 +564,10 @@ function bijwerkBadges() {
   const nieuweAanmeldingen = db.aanmeldingen.filter(a => a.status === 'nieuw').length;
   document.getElementById('badge-nieuw').textContent = nieuweAanmeldingen;
   document.getElementById('badge-nieuw').classList.toggle('hidden', nieuweAanmeldingen === 0);
+
+  const nieuweInteresse = (db.interesses||[]).filter(i => i.status === 'nieuw').length;
+  document.getElementById('badge-interesse').textContent = nieuweInteresse;
+  document.getElementById('badge-interesse').classList.toggle('hidden', nieuweInteresse === 0);
 }
 
 // ═══════════════════════════════════════════════
@@ -623,9 +641,64 @@ function bronLabel(bron) {
   return map[bron] || bron;
 }
 
+function sortPijl(huidigeKolom, kolom, richting) {
+  return huidigeKolom === kolom ? (richting === 'asc' ? ' ▲' : ' ▼') : '';
+}
+
+// ═══════════════════════════════════════════════
+// GLOBALE ZOEKFUNCTIE (topbar)
+// ═══════════════════════════════════════════════
+function globaalZoek(q) {
+  const resEl = document.getElementById('topbar-zoek-resultaten');
+  if (!resEl) return;
+  q = (q||'').trim().toLowerCase();
+  if (!q) { resEl.classList.add('hidden'); resEl.innerHTML = ''; return; }
+
+  const matches = db.deelnemers.filter(d =>
+    (d.voornaam+' '+d.achternaam).toLowerCase().includes(q) ||
+    d.email.toLowerCase().includes(q) ||
+    (d.telefoon||'').includes(q) ||
+    (d.woonplaats||'').toLowerCase().includes(q)
+  ).slice(0, 8);
+
+  if (matches.length === 0) {
+    resEl.innerHTML = '<div style="padding:12px;font-size:12px;color:var(--grijs-donker)">Geen deelnemers gevonden.</div>';
+    resEl.classList.remove('hidden');
+    return;
+  }
+
+  resEl.innerHTML = matches.map(d => {
+    const aanm = db.aanmeldingen.filter(a => a.deelnemerId === d.id);
+    return `<div style="padding:10px 12px;cursor:pointer;border-bottom:1px solid var(--grijs-licht);display:flex;align-items:center;gap:8px"
+        onclick="kiesZoekResultaat('${d.id}')"
+        onmouseover="this.style.background='var(--grijs-licht)'" onmouseout="this.style.background=''">
+      <span class="dl-initials">${initialen(d.voornaam,d.achternaam)}</span>
+      <div style="flex:1;min-width:0">
+        <strong style="font-size:13px">${esc(d.voornaam)} ${esc(d.achternaam)}</strong><br>
+        <span class="text-muted">${esc(d.email)}</span>
+      </div>
+      <span class="badge nieuw">${aanm.length} insch.</span>
+    </div>`;
+  }).join('');
+  resEl.classList.remove('hidden');
+}
+
+function kiesZoekResultaat(dlId) {
+  const resEl = document.getElementById('topbar-zoek-resultaten');
+  const inputEl = document.getElementById('topbar-zoek');
+  if (resEl) resEl.classList.add('hidden');
+  if (inputEl) inputEl.value = '';
+  openDeelnemerDetail(dlId);
+}
+
 // ═══════════════════════════════════════════════
 // DASHBOARD
 // ═══════════════════════════════════════════════
+function dashboardNaarAanmeldingen(status) {
+  aanmFilter = { status: status||'', activiteitId:'', deelnemerId:'', zoek:'' };
+  navigeer('aanmeldingen');
+}
+
 function renderDashboard() {
   const totaleDl = db.deelnemers.length;
   const totaleBevest = db.aanmeldingen.filter(a => a.status === 'bevestigd').length;
@@ -688,27 +761,27 @@ function renderDashboard() {
 
   return `
     <div class="stat-grid">
-      <div class="stat-card">
+      <div class="stat-card" style="cursor:pointer" onclick="navigeer('deelnemers')">
         <div class="label">Deelnemers</div>
         <div class="value">${totaleDl}</div>
         <div class="sub">in database</div>
       </div>
-      <div class="stat-card groen">
+      <div class="stat-card groen" style="cursor:pointer" onclick="dashboardNaarAanmeldingen('bevestigd')">
         <div class="label">Bevestigd</div>
         <div class="value">${totaleBevest}</div>
         <div class="sub">actieve aanmeldingen</div>
       </div>
-      <div class="stat-card geel">
+      <div class="stat-card geel" style="cursor:pointer" onclick="dashboardNaarAanmeldingen('wachtlijst')">
         <div class="label">Wachtlijst</div>
         <div class="value">${totaleWacht}</div>
         <div class="sub">wachtend op plek</div>
       </div>
-      <div class="stat-card oranje">
+      <div class="stat-card oranje" style="cursor:pointer" onclick="dashboardNaarAanmeldingen('nieuw')">
         <div class="label">Nieuw</div>
         <div class="value">${totaleNieuw}</div>
         <div class="sub">te verwerken</div>
       </div>
-      <div class="stat-card">
+      <div class="stat-card" style="cursor:pointer" onclick="navigeer('activiteiten')">
         <div class="label">Activiteiten</div>
         <div class="value">${db.activiteiten.length}</div>
         <div class="sub">${db.activiteiten.filter(a=>a.datum>=new Date().toISOString().split('T')[0]).length} aankomend</div>
@@ -733,8 +806,30 @@ function renderDashboard() {
 // ═══════════════════════════════════════════════
 // ACTIVITEITEN
 // ═══════════════════════════════════════════════
+let actSorteerKolom = 'datum';
+let actSorteerRichting = 'asc';
+
+function sorteerActiviteiten(kolom) {
+  if (actSorteerKolom === kolom) actSorteerRichting = actSorteerRichting === 'asc' ? 'desc' : 'asc';
+  else { actSorteerKolom = kolom; actSorteerRichting = 'asc'; }
+  navigeer('activiteiten');
+}
+
+function vergelijkActiviteiten(a, b) {
+  const dir = actSorteerRichting === 'asc' ? 1 : -1;
+  switch (actSorteerKolom) {
+    case 'naam':       return a.naam.localeCompare(b.naam) * dir;
+    case 'type':       return a.type.localeCompare(b.type) * dir;
+    case 'locatie':    return (a.locatie||'').localeCompare(b.locatie||'') * dir;
+    case 'capaciteit': return (bevestigdAantal(a.id) - bevestigdAantal(b.id)) * dir;
+    case 'status':     return a.status.localeCompare(b.status) * dir;
+    case 'datum':
+    default:           return a.datum.localeCompare(b.datum) * dir;
+  }
+}
+
 function renderActiviteiten() {
-  const gesorteerd = [...db.activiteiten].sort((a,b) => a.datum.localeCompare(b.datum));
+  const gesorteerd = [...db.activiteiten].sort(vergelijkActiviteiten);
 
   const acties = `<button class="btn btn-primary" onclick="openNieuweActiviteit()">+ Activiteit</button>`;
   setTimeout(() => { document.getElementById('topbar-acties').innerHTML = acties; }, 0);
@@ -748,8 +843,13 @@ function renderActiviteiten() {
       <div class="tbl-wrap">
       <table>
         <thead><tr>
-          <th>Datum</th><th>Naam</th><th>Type</th><th>Locatie</th>
-          <th>Capaciteit</th><th>Status</th><th style="text-align:right">Acties</th>
+          <th onclick="sorteerActiviteiten('datum')">Datum${sortPijl(actSorteerKolom,'datum',actSorteerRichting)}</th>
+          <th onclick="sorteerActiviteiten('naam')">Naam${sortPijl(actSorteerKolom,'naam',actSorteerRichting)}</th>
+          <th onclick="sorteerActiviteiten('type')">Type${sortPijl(actSorteerKolom,'type',actSorteerRichting)}</th>
+          <th onclick="sorteerActiviteiten('locatie')">Locatie${sortPijl(actSorteerKolom,'locatie',actSorteerRichting)}</th>
+          <th onclick="sorteerActiviteiten('capaciteit')">Capaciteit${sortPijl(actSorteerKolom,'capaciteit',actSorteerRichting)}</th>
+          <th onclick="sorteerActiviteiten('status')">Status${sortPijl(actSorteerKolom,'status',actSorteerRichting)}</th>
+          <th style="text-align:right">Acties</th>
         </tr></thead>
         <tbody>
         ${gesorteerd.map(act => {
@@ -1032,9 +1132,121 @@ function openActiviteitDetail(actId) {
 // ═══════════════════════════════════════════════
 let dlFilter = '';
 let dlSorteer = 'naam';
+let dlSorteerRichting = 'asc';
+
+function sorteerDeelnemers(kolom) {
+  if (dlSorteer === kolom) dlSorteerRichting = dlSorteerRichting === 'asc' ? 'desc' : 'asc';
+  else { dlSorteer = kolom; dlSorteerRichting = 'asc'; }
+  navigeer('deelnemers');
+}
+
+// ─── DUBBELE DEELNEMERS ───
+let dubbeleGroepenCache = [];
+
+function vindDubbeleDeelnemers() {
+  const groepen = [];
+
+  const byEmail = {};
+  db.deelnemers.forEach(d => {
+    const key = (d.email||'').trim().toLowerCase();
+    if (!key) return;
+    (byEmail[key] = byEmail[key]||[]).push(d);
+  });
+  Object.values(byEmail).filter(g => g.length > 1).forEach(g => {
+    groepen.push({ type: 'email', sleutel: g[0].email, leden: g });
+  });
+
+  const byNaam = {};
+  db.deelnemers.forEach(d => {
+    const key = (d.voornaam+' '+d.achternaam).trim().toLowerCase();
+    if (!key) return;
+    (byNaam[key] = byNaam[key]||[]).push(d);
+  });
+  Object.values(byNaam).filter(g => g.length > 1).forEach(g => {
+    const emails = new Set(g.map(d => (d.email||'').trim().toLowerCase()));
+    if (emails.size > 1) groepen.push({ type: 'naam', sleutel: `${g[0].voornaam} ${g[0].achternaam}`, leden: g });
+  });
+
+  return groepen;
+}
+
+function openDubbeleDeelnemersModal() {
+  dubbeleGroepenCache = vindDubbeleDeelnemers();
+
+  if (dubbeleGroepenCache.length === 0) {
+    openModal('Dubbele deelnemers', `<div class="empty-state"><div class="emoji">✅</div><p>Geen dubbele deelnemers gevonden (op naam of e-mailadres).</p></div>`, [
+      { label: 'Sluiten', cls: 'btn-ghost', action: 'sluitModal()' }
+    ]);
+    return;
+  }
+
+  const html = `
+    <p class="form-hint mb-16">Kies per groep welke deelnemer je wilt <strong>behouden</strong>. Aanmeldingen van de andere(n) worden overgezet naar de behouden deelnemer; de duplicaten worden daarna verwijderd. Dit kan niet ongedaan worden gemaakt.</p>
+    ${dubbeleGroepenCache.map((g, i) => `
+      <div class="card" style="margin-bottom:14px">
+        <div class="card-title" style="font-size:13px">${g.type==='email' ? `✉️ Zelfde e-mailadres: ${esc(g.sleutel)}` : `👤 Zelfde naam, ander e-mailadres: ${esc(g.sleutel)}`}</div>
+        ${g.leden.map((d,j) => {
+          const aanm = db.aanmeldingen.filter(a => a.deelnemerId === d.id).length;
+          return `<label style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--grijs-licht);cursor:pointer">
+            <input type="radio" name="dub-${i}" value="${d.id}" ${j===0?'checked':''}>
+            <span class="dl-initials">${initialen(d.voornaam,d.achternaam)}</span>
+            <span style="flex:1"><strong>${esc(d.voornaam)} ${esc(d.achternaam)}</strong> <span class="text-muted">${esc(d.email)}${d.telefoon?' · '+esc(d.telefoon):''}</span></span>
+            <span class="badge nieuw">${aanm} insch.</span>
+          </label>`;
+        }).join('')}
+        <button class="btn btn-primary btn-sm mt-8" onclick="samenvoegGroep(${i})">Samenvoegen — behoud geselecteerde</button>
+      </div>
+    `).join('')}
+  `;
+  openModal(`Mogelijke duplicaten (${dubbeleGroepenCache.length})`, html, [
+    { label: 'Sluiten', cls: 'btn-ghost', action: 'sluitModal()' }
+  ], true);
+}
+
+function samenvoegGroep(i) {
+  const groep = dubbeleGroepenCache[i];
+  if (!groep) return;
+  const radio = document.querySelector(`input[name="dub-${i}"]:checked`);
+  if (!radio) return;
+  const behoudenId = radio.value;
+  const wegIds = groep.leden.map(d => d.id).filter(id => id !== behoudenId);
+  if (wegIds.length === 0) return;
+
+  let overgezet = 0, overgeslagen = 0;
+  wegIds.forEach(wegId => {
+    db.aanmeldingen.forEach(a => {
+      if (a.deelnemerId === wegId) {
+        if (bestaatAanmelding(behoudenId, a.activiteitId)) overgeslagen++;
+        else { a.deelnemerId = behoudenId; overgezet++; }
+      }
+    });
+    db.aanmeldingen = db.aanmeldingen.filter(a => a.deelnemerId !== wegId);
+    db.interesses = (db.interesses||[]).map(it => it.deelnemerId === wegId ? { ...it, deelnemerId: behoudenId } : it);
+  });
+  db.deelnemers = db.deelnemers.filter(d => !wegIds.includes(d.id));
+
+  slaOp(); sluitModal(); navigeer('deelnemers');
+  toast(`${wegIds.length} duplicaat(en) samengevoegd. ${overgezet} aanmelding(en) overgezet${overgeslagen ? `, ${overgeslagen} dubbele aanmelding(en) genegeerd` : ''}.`, 'succes');
+}
+
+function vergelijkDeelnemers(a, b) {
+  const dir = dlSorteerRichting === 'asc' ? 1 : -1;
+  switch (dlSorteer) {
+    case 'email':        return (a.email||'').localeCompare(b.email||'') * dir;
+    case 'telefoon':     return (a.telefoon||'').localeCompare(b.telefoon||'') * dir;
+    case 'woonplaats':   return (a.woonplaats||'').localeCompare(b.woonplaats||'') * dir;
+    case 'aanmeldingen': return (db.aanmeldingen.filter(x=>x.deelnemerId===a.id).length - db.aanmeldingen.filter(x=>x.deelnemerId===b.id).length) * dir;
+    case 'datum':        return a.aangemaakt.localeCompare(b.aangemaakt) * dir;
+    case 'naam':
+    default:              return (a.achternaam+a.voornaam).localeCompare(b.achternaam+b.voornaam) * dir;
+  }
+}
 
 function renderDeelnemers() {
-  const acties = `<button class="btn btn-primary" onclick="openNieuweDeelnemer()">+ Deelnemer</button>`;
+  const acties = `
+    <button class="btn btn-outline" onclick="openDubbeleDeelnemersModal()">🔍 Dubbele deelnemers</button>
+    <button class="btn btn-primary" onclick="openNieuweDeelnemer()">+ Deelnemer</button>
+  `;
   setTimeout(() => { document.getElementById('topbar-acties').innerHTML = acties; }, 0);
 
   let lijst = [...db.deelnemers];
@@ -1047,12 +1259,7 @@ function renderDeelnemers() {
       (d.woonplaats||'').toLowerCase().includes(q)
     );
   }
-  lijst.sort((a,b) => {
-    if (dlSorteer==='naam') return (a.achternaam+a.voornaam).localeCompare(b.achternaam+b.voornaam);
-    if (dlSorteer==='email') return a.email.localeCompare(b.email);
-    if (dlSorteer==='datum') return b.aangemaakt.localeCompare(a.aangemaakt);
-    return 0;
-  });
+  lijst.sort(vergelijkDeelnemers);
 
   return `
     <div class="filter-bar">
@@ -1061,19 +1268,20 @@ function renderDeelnemers() {
         <input type="text" placeholder="Zoek op naam, e-mail, woonplaats…" value="${esc(dlFilter)}"
           oninput="dlFilter=this.value;navigeer('deelnemers')" style="padding-left:32px;width:260px">
       </div>
-      <select onchange="dlSorteer=this.value;navigeer('deelnemers')" class="btn btn-ghost" style="font-size:13px;padding:7px 10px">
-        <option value="naam" ${dlSorteer==='naam'?'selected':''}>Sorteer: Naam</option>
-        <option value="email" ${dlSorteer==='email'?'selected':''}>Sorteer: E-mail</option>
-        <option value="datum" ${dlSorteer==='datum'?'selected':''}>Sorteer: Nieuwst</option>
-      </select>
       <span class="text-muted">${lijst.length} van ${db.deelnemers.length}</span>
     </div>
     <div class="card">
       <div class="tbl-wrap">
       <table>
         <thead><tr>
-          <th></th><th>Naam</th><th>E-mail</th><th>Telefoon</th><th>Woonplaats</th>
-          <th>Toestemming</th><th>Aanmeldingen</th><th style="text-align:right">Acties</th>
+          <th></th>
+          <th onclick="sorteerDeelnemers('naam')">Naam${sortPijl(dlSorteer,'naam',dlSorteerRichting)}</th>
+          <th onclick="sorteerDeelnemers('email')">E-mail${sortPijl(dlSorteer,'email',dlSorteerRichting)}</th>
+          <th onclick="sorteerDeelnemers('telefoon')">Telefoon${sortPijl(dlSorteer,'telefoon',dlSorteerRichting)}</th>
+          <th onclick="sorteerDeelnemers('woonplaats')">Woonplaats${sortPijl(dlSorteer,'woonplaats',dlSorteerRichting)}</th>
+          <th>Toestemming</th>
+          <th onclick="sorteerDeelnemers('aanmeldingen')">Aanmeldingen${sortPijl(dlSorteer,'aanmeldingen',dlSorteerRichting)}</th>
+          <th style="text-align:right">Acties</th>
         </tr></thead>
         <tbody>
         ${lijst.length === 0 ? `<tr><td colspan="8" class="text-muted" style="text-align:center;padding:24px">Geen deelnemers gevonden.</td></tr>` :
@@ -1158,7 +1366,7 @@ function deelnemerFormHtml(dl) {
         <textarea id="d-notities">${esc(v.notities||'')}</textarea>
       </div>
     </div>
-    <div class="form-row cols-2">
+    <div class="form-row cols-3">
       <div class="form-group">
         <label style="display:flex;align-items:center;gap:8px;cursor:pointer">
           <input type="checkbox" id="d-email-ok" ${v.toestemmingEmail?'checked':''}>
@@ -1169,6 +1377,12 @@ function deelnemerFormHtml(dl) {
         <label style="display:flex;align-items:center;gap:8px;cursor:pointer">
           <input type="checkbox" id="d-wa-ok" ${v.toestemmingWhatsApp?'checked':''}>
           Toestemming WhatsApp
+        </label>
+      </div>
+      <div class="form-group">
+        <label style="display:flex;align-items:center;gap:8px;cursor:pointer">
+          <input type="checkbox" id="d-nb-ok" ${v.toestemmingNieuwsbrief!==false?'checked':''}>
+          Toestemming nieuwsbrief
         </label>
       </div>
     </div>
@@ -1186,6 +1400,7 @@ function slaDeelnemerOp(bestaandId) {
     notities: document.getElementById('d-notities').value.trim(),
     toestemmingEmail: document.getElementById('d-email-ok').checked,
     toestemmingWhatsApp: document.getElementById('d-wa-ok').checked,
+    toestemmingNieuwsbrief: document.getElementById('d-nb-ok').checked,
   };
   if (bestaandId) {
     const idx = db.deelnemers.findIndex(d => d.id === bestaandId);
@@ -1249,10 +1464,38 @@ function filterAanmeldingenOpDl(dlId) {
 // AANMELDINGEN
 // ═══════════════════════════════════════════════
 let aanmFilter = { status:'', activiteitId:'', deelnemerId:'', zoek:'' };
-let aanmSorteer = 'datum';
+let aanmSorteer = 'aangemeld';
+let aanmSorteerRichting = 'desc';
+
+function sorteerAanmeldingen(kolom) {
+  if (aanmSorteer === kolom) aanmSorteerRichting = aanmSorteerRichting === 'asc' ? 'desc' : 'asc';
+  else { aanmSorteer = kolom; aanmSorteerRichting = 'asc'; }
+  navigeer('aanmeldingen');
+}
+
+function vergelijkAanmeldingen(a, b) {
+  const dir = aanmSorteerRichting === 'asc' ? 1 : -1;
+  switch (aanmSorteer) {
+    case 'deelnemer': {
+      const dlA = getDl(a.deelnemerId), dlB = getDl(b.deelnemerId);
+      return ((dlA?.achternaam||'')+(dlA?.voornaam||'')).localeCompare((dlB?.achternaam||'')+(dlB?.voornaam||'')) * dir;
+    }
+    case 'activiteit': return (getAct(a.activiteitId)?.naam||'').localeCompare(getAct(b.activiteitId)?.naam||'') * dir;
+    case 'groep': {
+      const grpA = getAct(a.activiteitId)?.groepen?.find(g=>g.id===a.groepId)?.naam || '';
+      const grpB = getAct(b.activiteitId)?.groepen?.find(g=>g.id===b.groepId)?.naam || '';
+      return grpA.localeCompare(grpB) * dir;
+    }
+    case 'status': return a.status.localeCompare(b.status) * dir;
+    case 'bron':   return a.bron.localeCompare(b.bron) * dir;
+    case 'aangemeld':
+    default:        return a.aangemeld.localeCompare(b.aangemeld) * dir;
+  }
+}
 
 function renderAanmeldingen() {
   const acties = `
+    <button class="btn btn-outline" onclick="openPlakAanmeldingFormspree()">📨 Plak Formspree</button>
     <button class="btn btn-outline" onclick="openBulkAanmelding()">👥 Bulk aanmelding</button>
     <button class="btn btn-primary" onclick="openNieuweAanmelding()">+ Aanmelding</button>
   `;
@@ -1269,7 +1512,7 @@ function renderAanmeldingen() {
       return (dl?.voornaam+' '+dl?.achternaam).toLowerCase().includes(q) || dl?.email.toLowerCase().includes(q);
     });
   }
-  lijst.sort((a,b) => b.aangemeld.localeCompare(a.aangemeld));
+  lijst.sort(vergelijkAanmeldingen);
 
   const statusOpties = ['','nieuw','bevestigd','wachtlijst','afgemeld','aanwezig','no-show','geannuleerd'];
   const filterDlNaam = aanmFilter.deelnemerId ? dlNaam(aanmFilter.deelnemerId) : '';
@@ -1316,7 +1559,13 @@ function renderAanmeldingen() {
       <table>
         <thead><tr>
           <th style="width:32px"><input type="checkbox" id="bulk-alles" onchange="toggleAllesBulk(this)" title="Alles selecteren"></th>
-          <th>Deelnemer</th><th>Activiteit</th><th>Groep</th><th>Status</th><th>Bron</th><th>Aangemeld</th><th style="text-align:right">Acties</th>
+          <th onclick="sorteerAanmeldingen('deelnemer')">Deelnemer${sortPijl(aanmSorteer,'deelnemer',aanmSorteerRichting)}</th>
+          <th onclick="sorteerAanmeldingen('activiteit')">Activiteit${sortPijl(aanmSorteer,'activiteit',aanmSorteerRichting)}</th>
+          <th onclick="sorteerAanmeldingen('groep')">Groep${sortPijl(aanmSorteer,'groep',aanmSorteerRichting)}</th>
+          <th onclick="sorteerAanmeldingen('status')">Status${sortPijl(aanmSorteer,'status',aanmSorteerRichting)}</th>
+          <th onclick="sorteerAanmeldingen('bron')">Bron${sortPijl(aanmSorteer,'bron',aanmSorteerRichting)}</th>
+          <th onclick="sorteerAanmeldingen('aangemeld')">Aangemeld${sortPijl(aanmSorteer,'aangemeld',aanmSorteerRichting)}</th>
+          <th style="text-align:right">Acties</th>
         </tr></thead>
         <tbody>
         ${lijst.length===0 ? `<tr><td colspan="8" class="text-muted" style="text-align:center;padding:24px">Geen aanmeldingen gevonden.</td></tr>` :
@@ -1606,6 +1855,181 @@ function verwijderAanmelding(id) {
   slaOp(); navigeer(huidigView); toast('Aanmelding verwijderd.', 'succes');
 }
 
+// ─── AANMELDING VIA FORMSPREE PLAKKEN ───
+let formspreeAanmeldingBuffer = null;
+
+function openPlakAanmeldingFormspree() {
+  const actOpties = db.activiteiten.map(a => `<option value="${a.id}">${esc(a.naam)} · ${formatDatumKort(a.datum)}</option>`).join('');
+  const html = `
+    <p class="form-hint" style="margin-bottom:14px">
+      Plak de volledige Formspree-melding van een aanmelding voor een activiteit. Naam, e-mail, telefoon en opmerking worden automatisch herkend; bestaat de deelnemer al (op e-mailadres), dan krijg je de keuze om de gegevens te vervangen, aan te vullen of te negeren.
+    </p>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Geplakte melding</label>
+        <textarea id="fa-plak" style="min-height:200px;font-family:monospace;font-size:12px" placeholder="New form submission on …"></textarea>
+      </div>
+    </div>
+    <div id="fa-preview" class="text-muted mb-16">Plak hierboven om een voorbeeld te zien…</div>
+    <div class="form-row cols-2">
+      <div class="form-group">
+        <label>Activiteit *</label>
+        <select id="fa-activiteit" onchange="updateFaGroepSelect()">
+          <option value="">— kies activiteit —</option>
+          ${actOpties}
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Groep</label>
+        <select id="fa-groep"><option value="">Geen / n.v.t.</option></select>
+      </div>
+    </div>
+  `;
+  openModal('Aanmelding via Formspree verwerken', html, [
+    { label: 'Annuleren', cls: 'btn-ghost', action: 'sluitModal()' },
+    { label: 'Verwerken', cls: 'btn-primary', action: 'verwerkAanmeldingFormspree()' }
+  ], true);
+
+  setTimeout(() => {
+    const ta = document.getElementById('fa-plak');
+    if (!ta) return;
+    ta.addEventListener('input', () => {
+      const data = parseFormspreeTekst(ta.value);
+      const pv = document.getElementById('fa-preview');
+      if (pv) pv.innerHTML = (data.naam || data.email)
+        ? `Herkend: <strong>${esc(data.naam||'–')}</strong> · ${esc(data.email||'–')}${data.telefoon?' · '+esc(data.telefoon):''}`
+        : 'Nog geen naam/e-mail herkend…';
+
+      if (data.bijeenkomst) {
+        const sel = document.getElementById('fa-activiteit');
+        const zoek = data.bijeenkomst.toLowerCase();
+        const match = db.activiteiten.find(a =>
+          a.naam.toLowerCase().includes(zoek) || zoek.includes(a.naam.toLowerCase()) ||
+          (a.reeksNaam && (a.reeksNaam.toLowerCase().includes(zoek) || zoek.includes(a.reeksNaam.toLowerCase())))
+        );
+        if (match && sel && !sel.value) { sel.value = match.id; updateFaGroepSelect(); }
+      }
+    });
+  }, 50);
+}
+
+function updateFaGroepSelect() {
+  const actId = document.getElementById('fa-activiteit')?.value;
+  const grpSel = document.getElementById('fa-groep');
+  if (!grpSel) return;
+  const act = getAct(actId);
+  grpSel.innerHTML = '<option value="">Geen / n.v.t.</option>';
+  if (act?.groepen) act.groepen.forEach(g => {
+    const opt = document.createElement('option'); opt.value = g.id; opt.textContent = g.naam; grpSel.appendChild(opt);
+  });
+}
+
+function verwerkAanmeldingFormspree() {
+  const tekst = document.getElementById('fa-plak').value;
+  const data = parseFormspreeTekst(tekst);
+  if (!data.naam && !data.email) { toast('Kon geen naam of e-mail herkennen in de geplakte tekst.', 'fout'); return; }
+
+  const actId = document.getElementById('fa-activiteit').value;
+  if (!actId) { toast('Kies een activiteit.', 'fout'); return; }
+  const grpId = document.getElementById('fa-groep').value || null;
+
+  const bestaand = data.email ? db.deelnemers.find(d => d.email.toLowerCase() === data.email.toLowerCase()) : null;
+
+  if (bestaand) {
+    formspreeAanmeldingBuffer = { data, actId, grpId, bestaandId: bestaand.id };
+    openDubbeleDeelnemerKeuze(bestaand, data);
+  } else {
+    voltooiAanmeldingFormspree(data, actId, grpId, null, 'nieuw');
+  }
+}
+
+function openDubbeleDeelnemerKeuze(bestaand, data) {
+  const html = `
+    <div class="card" style="background:var(--geel-licht);border-color:#f0d88a;margin-bottom:16px">
+      <strong>⚠️ Deze deelnemer staat al in de admin</strong> (herkend op e-mailadres).
+    </div>
+    <div class="form-row cols-2">
+      <div>
+        <span class="text-muted">Bestaande gegevens</span><br>
+        <strong>${esc(bestaand.voornaam)} ${esc(bestaand.achternaam)}</strong><br>
+        ${esc(bestaand.email)}<br>
+        ${esc(bestaand.telefoon||'– geen telefoon –')}
+      </div>
+      <div>
+        <span class="text-muted">Nieuw uit formulier</span><br>
+        <strong>${esc(data.naam||'–')}</strong><br>
+        ${esc(data.email||'–')}<br>
+        ${esc(data.telefoon||'– geen telefoon –')}
+      </div>
+    </div>
+    <p class="form-hint mt-16">In alle gevallen wordt de aanmelding voor de gekozen activiteit toegevoegd. Kies hoe je met de deelnemergegevens wilt omgaan:</p>
+    <ul style="font-size:12px;color:var(--tekst-zacht);margin:8px 0 0 18px;line-height:1.7">
+      <li><strong>Negeren</strong> — bestaande gegevens blijven ongewijzigd.</li>
+      <li><strong>Aanvullen</strong> — alleen lege velden (zoals telefoon/notities) worden ingevuld.</li>
+      <li><strong>Vervangen</strong> — naam, e-mail, telefoon en opmerking worden overschreven met de nieuwe gegevens.</li>
+    </ul>
+  `;
+  openModal('Deelnemer bestaat al', html, [
+    { label: 'Annuleren', cls: 'btn-ghost', action: 'sluitModal()' },
+    { label: 'Negeren', cls: 'btn-outline', action: `kiesDubbeleDeelnemer('negeren')` },
+    { label: 'Aanvullen', cls: 'btn-outline', action: `kiesDubbeleDeelnemer('aanvullen')` },
+    { label: 'Vervangen', cls: 'btn-primary', action: `kiesDubbeleDeelnemer('vervangen')` },
+  ], true);
+}
+
+function kiesDubbeleDeelnemer(modus) {
+  if (!formspreeAanmeldingBuffer) return;
+  const { data, actId, grpId, bestaandId } = formspreeAanmeldingBuffer;
+  voltooiAanmeldingFormspree(data, actId, grpId, bestaandId, modus);
+}
+
+function voltooiAanmeldingFormspree(data, actId, grpId, bestaandId, modus) {
+  let dlId;
+  if (bestaandId) {
+    const dl = getDl(bestaandId);
+    if (modus === 'vervangen') {
+      const delen = (data.naam||'').trim().split(' ');
+      if (delen[0]) { dl.voornaam = delen.shift(); dl.achternaam = delen.join(' '); }
+      if (data.email) dl.email = data.email;
+      if (data.telefoon) dl.telefoon = data.telefoon;
+      if (data.opmerking) dl.notities = data.opmerking;
+    } else if (modus === 'aanvullen') {
+      if (!dl.telefoon && data.telefoon) dl.telefoon = data.telefoon;
+      if (!dl.notities && data.opmerking) dl.notities = data.opmerking;
+    }
+    // modus 'negeren': niets aanpassen
+    dlId = dl.id;
+  } else {
+    const delen = (data.naam||'').trim().split(' ');
+    const nieuweDl = {
+      id: uid(), voornaam: delen.shift()||'', achternaam: delen.join(' '),
+      email: data.email||'', telefoon: data.telefoon||'', woonplaats: '',
+      notities: data.opmerking||'', toestemmingEmail: true, toestemmingWhatsApp: !!data.telefoon,
+      aangemaakt: nu(),
+    };
+    db.deelnemers.push(nieuweDl);
+    dlId = nieuweDl.id;
+  }
+
+  if (bestaatAanmelding(dlId, actId)) {
+    slaOp(); sluitModal(); navigeer('aanmeldingen');
+    toast('Deze deelnemer was al aangemeld voor deze activiteit — geen nieuwe aanmelding toegevoegd.', 'waarschuwing');
+    formspreeAanmeldingBuffer = null;
+    return;
+  }
+
+  let status = 'bevestigd';
+  if (isGroepVol(actId, grpId)) status = 'wachtlijst';
+
+  db.aanmeldingen.push({ id: uid(), deelnemerId: dlId, activiteitId: actId,
+    groepId: grpId, status, bron: 'website', aangemeld: nu(),
+    statusHistory: [{ status, datum: nu() }], notities: data.opmerking||'' });
+
+  slaOp(); sluitModal(); navigeer('aanmeldingen'); bijwerkBadges();
+  toast(`Aanmelding verwerkt (${status}) voor ${actNaam(actId)}.`, 'succes');
+  formspreeAanmeldingBuffer = null;
+}
+
 // ─── BULK ACTIES ───
 function geselecteerdeIds() {
   return [...document.querySelectorAll('.aanm-cb:checked')].map(cb => cb.value);
@@ -1663,9 +2087,8 @@ function bulkEmailSelectie() {
   const dlIds = [...new Set(ids.map(id => getAanm(id)?.deelnemerId).filter(Boolean))];
   const ontvangers = dlIds.map(id => getDl(id)).filter(d => d?.toestemmingEmail && d?.email);
   if (ontvangers.length === 0) { toast('Geen ontvangers met e-mailtoestemming.', 'fout'); return; }
-  const emails = ontvangers.map(d => d.email).join(',');
-  window.location.href = `mailto:?bcc=${emails}&subject=${encodeURIComponent('Zincafé Zweeloo — ')}&body=`;
-  toast(`E-mail geopend voor ${ontvangers.length} ontvangers.`, 'succes');
+  const emails = ontvangers.map(d => d.email);
+  openMailtoVenster(emails, 'Zincafé Zweeloo — ', '', 'Bulk selectie', 'email', ontvangers.length);
 }
 
 function bulkVerwijderen() {
@@ -1674,6 +2097,275 @@ function bulkVerwijderen() {
   if (!confirm(`${ids.length} aanmelding(en) definitief verwijderen?`)) return;
   db.aanmeldingen = db.aanmeldingen.filter(a => !ids.includes(a.id));
   slaOp(); navigeer('aanmeldingen'); toast(`${ids.length} aanmelding(en) verwijderd.`, 'succes');
+}
+
+// ═══════════════════════════════════════════════
+// INTERESSE (Formspree — "hou me op de hoogte")
+// ═══════════════════════════════════════════════
+const INTERESSE_VELDEN = ['naam','email','telefoon','bijeenkomst','op-de-hoogte','groepVoorkeur','opmerking'];
+
+function parseFormspreeTekst(tekst) {
+  const veldenLower = INTERESSE_VELDEN.map(v => v.toLowerCase());
+  const regels = tekst.split(/\r?\n/).map(r => r.trim()).filter(Boolean);
+  const result = {};
+  let i = 0;
+  while (i < regels.length) {
+    const regel = regels[i];
+    const lower = regel.toLowerCase();
+    if (lower.startsWith('submitted')) { result._submitted = regel.replace(/^submitted\s*/i, ''); i++; continue; }
+    const idx = veldenLower.indexOf(lower);
+    if (idx !== -1) {
+      const key = INTERESSE_VELDEN[idx];
+      i++;
+      const waarde = [];
+      while (i < regels.length && veldenLower.indexOf(regels[i].toLowerCase()) === -1 && !regels[i].toLowerCase().startsWith('submitted')) {
+        waarde.push(regels[i]); i++;
+      }
+      result[key] = waarde.join(' ');
+    } else {
+      i++; // intro-regels van Formspree overslaan
+    }
+  }
+  return result;
+}
+
+function interesseStatusBadge(status) {
+  return status === 'verwerkt'
+    ? '<span class="badge afgemeld">Verwerkt</span>'
+    : '<span class="badge nieuw">Nieuw</span>';
+}
+
+let intSorteer = 'aangemeld';
+let intSorteerRichting = 'desc';
+
+function sorteerInteresse(kolom) {
+  if (intSorteer === kolom) intSorteerRichting = intSorteerRichting === 'asc' ? 'desc' : 'asc';
+  else { intSorteer = kolom; intSorteerRichting = 'asc'; }
+  navigeer('interesse');
+}
+
+function vergelijkInteresse(a, b) {
+  const dir = intSorteerRichting === 'asc' ? 1 : -1;
+  switch (intSorteer) {
+    case 'naam':          return (a.naam||'').localeCompare(b.naam||'') * dir;
+    case 'contact':       return (a.email||'').localeCompare(b.email||'') * dir;
+    case 'bijeenkomst':   return (a.bijeenkomst||'').localeCompare(b.bijeenkomst||'') * dir;
+    case 'groepVoorkeur': return (a.groepVoorkeur||'').localeCompare(b.groepVoorkeur||'') * dir;
+    case 'status':        return (a.status||'').localeCompare(b.status||'') * dir;
+    case 'aangemeld':
+    default:               return (a.aangemeld||'').localeCompare(b.aangemeld||'') * dir;
+  }
+}
+
+function renderInteresse() {
+  const acties = `
+    <button class="btn btn-outline" onclick="mailAlleInteresse()">✉️ Mail iedereen</button>
+    <button class="btn btn-primary" onclick="openPlakInteresse()">+ Plak formulier</button>
+  `;
+  setTimeout(() => { document.getElementById('topbar-acties').innerHTML = acties; }, 0);
+
+  const lijst = [...(db.interesses||[])].sort(vergelijkInteresse);
+
+  if (lijst.length === 0) {
+    return `<div class="card"><div class="empty-state"><div class="emoji">📨</div>
+      <p>Nog niemand heeft aangegeven op de hoogte gehouden te willen worden.</p>
+      <button class="btn btn-primary mt-16" onclick="openPlakInteresse()">+ Plak eerste melding</button>
+    </div></div>`;
+  }
+
+  return `
+    <p class="text-muted mb-16">Mensen die via het Formspree-formulier op de website hebben aangegeven op de hoogte gehouden te willen worden van nieuwe activiteiten (zonder zich al ergens voor aan te melden).</p>
+    <div class="card">
+      <div class="tbl-wrap">
+      <table>
+        <thead><tr>
+          <th onclick="sorteerInteresse('naam')">Naam${sortPijl(intSorteer,'naam',intSorteerRichting)}</th>
+          <th onclick="sorteerInteresse('contact')">Contact${sortPijl(intSorteer,'contact',intSorteerRichting)}</th>
+          <th onclick="sorteerInteresse('bijeenkomst')">Bijeenkomst${sortPijl(intSorteer,'bijeenkomst',intSorteerRichting)}</th>
+          <th onclick="sorteerInteresse('groepVoorkeur')">Groepvoorkeur${sortPijl(intSorteer,'groepVoorkeur',intSorteerRichting)}</th>
+          <th>Opmerking</th>
+          <th onclick="sorteerInteresse('status')">Status${sortPijl(intSorteer,'status',intSorteerRichting)}</th>
+          <th onclick="sorteerInteresse('aangemeld')">Aangemeld${sortPijl(intSorteer,'aangemeld',intSorteerRichting)}</th>
+          <th style="text-align:right">Acties</th>
+        </tr></thead>
+        <tbody>
+        ${lijst.map(it => `<tr>
+          <td><span class="dl-initials">${initialen((it.naam||'').split(' ')[0],(it.naam||'').split(' ').slice(1).join(' '))}</span> <strong>${esc(it.naam||'–')}</strong></td>
+          <td>${it.email?`<a href="mailto:${esc(it.email)}" style="color:var(--blauw-mid)">${esc(it.email)}</a>`:''}${it.telefoon?`<br><span class="text-muted">📞 ${esc(it.telefoon)}</span>`:''}</td>
+          <td class="text-muted">${esc(it.bijeenkomst||'–')}</td>
+          <td class="text-muted">${esc(it.groepVoorkeur||'–')}</td>
+          <td class="text-muted">${esc(it.opmerking||'–')}</td>
+          <td>${interesseStatusBadge(it.status)}</td>
+          <td class="text-muted">${formatDatum(it.aangemeld)}</td>
+          <td>
+            <div class="td-actions">
+              <button class="btn btn-ghost btn-sm" onclick="maakDeelnemerVanInteresse('${it.id}')">+ Deelnemer</button>
+              <button class="btn btn-ghost btn-sm" onclick="toggleInteresseVerwerkt('${it.id}')">${it.status==='verwerkt'?'↺ Heropenen':'✓ Verwerkt'}</button>
+              <button class="btn btn-danger btn-sm" onclick="verwijderInteresse('${it.id}')">🗑</button>
+            </div>
+          </td>
+        </tr>`).join('')}
+        </tbody>
+      </table>
+      </div>
+    </div>
+  `;
+}
+
+function openPlakInteresse() {
+  const html = `
+    <p style="font-size:13px;color:var(--tekst-zacht);margin-bottom:14px">
+      Plak hieronder de volledige tekst van de Formspree-melding (bijv. uit de e-mail "New form submission on Interesse Zincafe…") en klik op Verwerken.
+    </p>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Geplakte melding</label>
+        <textarea id="int-plak" style="min-height:220px;font-family:monospace;font-size:12px" placeholder="New form submission on Interesse Zincafe&#10;naam&#10;Anja Bijen&#10;email&#10;bijenanja@gmail.com&#10;…"></textarea>
+      </div>
+    </div>
+    <div id="int-preview" class="text-muted">Plak hierboven om een voorbeeld te zien…</div>
+  `;
+  openModal('Interesse toevoegen', html, [
+    { label: 'Annuleren', cls: 'btn-ghost', action: 'sluitModal()' },
+    { label: 'Verwerken', cls: 'btn-primary', action: 'verwerkInteressePlakken()' }
+  ]);
+  setTimeout(() => {
+    const ta = document.getElementById('int-plak');
+    if (ta) ta.addEventListener('input', () => {
+      const data = parseFormspreeTekst(ta.value);
+      const pv = document.getElementById('int-preview');
+      if (pv) pv.innerHTML = data.naam || data.email
+        ? `Herkend: <strong>${esc(data.naam||'–')}</strong> · ${esc(data.email||'–')}`
+        : 'Nog geen naam/e-mail herkend…';
+    });
+  }, 50);
+}
+
+function verwerkInteressePlakken() {
+  const tekst = document.getElementById('int-plak').value;
+  const data = parseFormspreeTekst(tekst);
+  if (!data.naam && !data.email) { toast('Kon geen naam of e-mail herkennen in de geplakte tekst.', 'fout'); return; }
+
+  db.interesses = db.interesses || [];
+  db.interesses.push({
+    id: uid(),
+    naam: data.naam || '',
+    email: data.email || '',
+    telefoon: data.telefoon || '',
+    bijeenkomst: data.bijeenkomst || '',
+    opDeHoogte: data['op-de-hoogte'] || '',
+    groepVoorkeur: data.groepVoorkeur || '',
+    opmerking: data.opmerking || '',
+    status: 'nieuw',
+    aangemeld: nu(),
+  });
+  slaOp(); sluitModal(); navigeer('interesse'); bijwerkBadges();
+  toast(`${data.naam || data.email} toegevoegd aan interesselijst.`, 'succes');
+}
+
+function toggleInteresseVerwerkt(id) {
+  const item = (db.interesses||[]).find(i => i.id === id);
+  if (!item) return;
+  item.status = item.status === 'verwerkt' ? 'nieuw' : 'verwerkt';
+  slaOp(); navigeer('interesse'); bijwerkBadges();
+}
+
+function verwijderInteresse(id) {
+  if (!confirm('Deze interesse-melding verwijderen?')) return;
+  db.interesses = (db.interesses||[]).filter(i => i.id !== id);
+  slaOp(); navigeer('interesse'); bijwerkBadges(); toast('Verwijderd.', 'succes');
+}
+
+function maakDeelnemerVanInteresse(id) {
+  const item = (db.interesses||[]).find(i => i.id === id);
+  if (!item) return;
+  const delen = (item.naam||'').trim().split(' ');
+  const prefill = {
+    voornaam: delen.shift() || '',
+    achternaam: delen.join(' '),
+    email: item.email || '',
+    telefoon: item.telefoon || '',
+    woonplaats: '',
+    notities: [item.bijeenkomst, item.groepVoorkeur, item.opmerking].filter(Boolean).join(' · '),
+    toestemmingEmail: true,
+    toestemmingWhatsApp: !!item.telefoon,
+  };
+  const actOpties = db.activiteiten.map(a => `<option value="${a.id}">${esc(a.naam)} · ${formatDatumKort(a.datum)}</option>`).join('');
+  const html = deelnemerFormHtml(prefill) + `
+    <hr class="divider">
+    <div class="form-row cols-2">
+      <div class="form-group">
+        <label>Direct aanmelden voor activiteit (optioneel)</label>
+        <select id="int-act" onchange="updateIntGroepSelect()">
+          <option value="">— geen, alleen deelnemer aanmaken —</option>
+          ${actOpties}
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Groep</label>
+        <select id="int-grp"><option value="">Geen / n.v.t.</option></select>
+      </div>
+    </div>
+    <span class="form-hint">Kies een activiteit als deze persoon nu meteen meedoet — anders telt hij/zij niet mee in de capaciteit van een activiteit.</span>
+  `;
+  openModal('Nieuwe deelnemer (vanuit interesse)', html, [
+    { label: 'Annuleren', cls: 'btn-ghost', action: 'sluitModal()' },
+    { label: 'Opslaan', cls: 'btn-primary', action: `slaDeelnemerVanInteresseOp('${id}')` }
+  ], true);
+}
+
+function updateIntGroepSelect() {
+  const actId = document.getElementById('int-act')?.value;
+  const grpSel = document.getElementById('int-grp');
+  if (!grpSel) return;
+  const act = getAct(actId);
+  grpSel.innerHTML = '<option value="">Geen / n.v.t.</option>';
+  if (act?.groepen) act.groepen.forEach(g => {
+    const opt = document.createElement('option'); opt.value = g.id; opt.textContent = g.naam; grpSel.appendChild(opt);
+  });
+}
+
+function slaDeelnemerVanInteresseOp(intId) {
+  const vn = document.getElementById('d-vn').value.trim();
+  const an = document.getElementById('d-an').value.trim();
+  const email = document.getElementById('d-email').value.trim();
+  if (!vn || !an || !email) { toast('Voornaam, achternaam en e-mail zijn verplicht.', 'fout'); return; }
+
+  const nieuweDl = {
+    id: uid(), voornaam: vn, achternaam: an, email,
+    telefoon: document.getElementById('d-tel').value.trim(),
+    woonplaats: document.getElementById('d-wpl').value.trim(),
+    notities: document.getElementById('d-notities').value.trim(),
+    toestemmingEmail: document.getElementById('d-email-ok').checked,
+    toestemmingWhatsApp: document.getElementById('d-wa-ok').checked,
+    toestemmingNieuwsbrief: document.getElementById('d-nb-ok').checked,
+    aangemaakt: nu(),
+  };
+  db.deelnemers.push(nieuweDl);
+
+  const item = (db.interesses||[]).find(i => i.id === intId);
+  if (item) { item.status = 'verwerkt'; item.deelnemerId = nieuweDl.id; }
+
+  const actId = document.getElementById('int-act')?.value;
+  let aanmeldMsg = '';
+  if (actId) {
+    const grpId = document.getElementById('int-grp')?.value || null;
+    let status = 'bevestigd';
+    if (isGroepVol(actId, grpId)) status = 'wachtlijst';
+    db.aanmeldingen.push({ id: uid(), deelnemerId: nieuweDl.id, activiteitId: actId,
+      groepId: grpId, status, bron: 'website', aangemeld: nu(),
+      statusHistory: [{ status, datum: nu() }], notities: '' });
+    aanmeldMsg = ` en aangemeld (${status}) voor ${actNaam(actId)}`;
+  }
+
+  slaOp(); sluitModal(); navigeer('interesse'); bijwerkBadges();
+  toast(`${vn} ${an} toegevoegd als deelnemer${aanmeldMsg}.`, 'succes');
+}
+
+function mailAlleInteresse() {
+  const emails = [...new Set((db.interesses||[]).filter(i => i.email).map(i => i.email))];
+  if (emails.length === 0) { toast('Geen e-mailadressen in de interesselijst.', 'fout'); return; }
+  openMailtoVenster(emails, 'Zincafé Zweeloo — nieuwe activiteit', '', 'Interesse-lijst', 'email', emails.length);
 }
 
 // ═══════════════════════════════════════════════
@@ -1822,6 +2514,7 @@ function renderCommunicatie() {
     <div class="tabs">
       <div class="tab active" onclick="commTab('email',this)">✉️ E-mail</div>
       <div class="tab" onclick="commTab('whatsapp',this)">💬 WhatsApp</div>
+      <div class="tab" onclick="commTab('nieuwsbrief',this)">📰 Nieuwsbrief</div>
       <div class="tab" onclick="commTab('wachtlijst',this)">📤 Wachtlijst</div>
       <div class="tab" onclick="commTab('log',this)">📋 Logboek</div>
     </div>
@@ -1971,6 +2664,54 @@ function renderCommunicatie() {
       </div>
     </div>
 
+    <!-- NIEUWSBRIEF TAB -->
+    <div id="comm-nieuwsbrief" class="hidden">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;align-items:start">
+        <div class="card">
+          <div class="card-title">📰 Nieuwsbrief versturen</div>
+          <div id="nb-preview" style="background:var(--blauw-licht);border-radius:8px;padding:10px 14px;font-size:12px;color:var(--blauw);margin-bottom:4px">
+            Bezig met laden…
+          </div>
+          <div id="nb-preview-namen" style="font-size:11px;color:var(--grijs-donker);margin-bottom:12px;min-height:16px"></div>
+          <div class="form-row">
+            <div class="form-group">
+              <label>Onderwerp</label>
+              <input id="nb-onderwerp" value="Zincafé Zweeloo — nieuwsbrief">
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label>Bericht <span class="text-muted">(tip: gebruik [naam] voor persoonlijke aanhef)</span></label>
+              <textarea id="nb-bericht" style="min-height:170px" placeholder="Beste [naam],&#10;&#10;…"></textarea>
+            </div>
+          </div>
+          <div class="flex gap-8" style="flex-wrap:wrap">
+            <button class="btn btn-ghost" onclick="laadNieuwsbriefSjabloon()">📰 Laad standaardtekst</button>
+            <button class="btn btn-primary" onclick="stuurNieuwsbrief()">✉️ Verstuur nieuwsbrief</button>
+          </div>
+          <p class="text-muted mt-8">Opent je e-mailprogramma met BCC ingevuld. Alleen deelnemers met e-mail- én nieuwsbrieftoestemming worden meegenomen.</p>
+        </div>
+
+        <div style="display:flex;flex-direction:column;gap:20px">
+          <div class="card">
+            <div class="card-title">📨 Afmelding verwerken</div>
+            <p class="form-hint mb-16">
+              Er is geen automatische afmeldknop — deze admin draait lokaal, zonder server, die zoiets zou kunnen opvangen. Vraag mensen die zich willen afmelden om terug te mailen, en plak hun reactie hieronder. De admin herkent het e-mailadres en zet voor die persoon de nieuwsbrief-toestemming uit, zodat hij/zij de volgende keer wordt overgeslagen.
+            </p>
+            <div class="form-group">
+              <textarea id="nb-afmeld-plak" style="min-height:90px;font-family:monospace;font-size:12px" placeholder="Plak hier de afmeldreactie van de deelnemer…"></textarea>
+            </div>
+            <button class="btn btn-primary btn-sm mt-8" onclick="verwerkNieuwsbriefAfmelding()">Verwerken</button>
+          </div>
+
+          <div class="card">
+            <div class="card-title">🚫 Afgemeld voor nieuwsbrief</div>
+            <div id="nb-afgemeld-lijst" style="font-size:13px;color:var(--tekst-zacht)"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- WACHTLIJST TAB -->
     <div id="comm-wachtlijst" class="hidden">
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;align-items:start">
@@ -2006,6 +2747,7 @@ function renderCommunicatie() {
   setTimeout(() => {
     updateCommPreview('em');
     updateCommPreview('wa');
+    updateNieuwsbriefPreview();
   }, 80);
 
   return html;
@@ -2014,7 +2756,7 @@ function renderCommunicatie() {
 function commTab(tab, el) {
   document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
   el.classList.add('active');
-  ['email','whatsapp','wachtlijst','log'].forEach(t => {
+  ['email','whatsapp','nieuwsbrief','wachtlijst','log'].forEach(t => {
     const el2 = document.getElementById('comm-'+t);
     if (el2) el2.classList.toggle('hidden', t !== tab);
   });
@@ -2114,16 +2856,12 @@ function stuurEmail() {
   const status = document.getElementById('em-status')?.value || null;
   const ontvangers = getSelectieDeelnemers({ activiteitId: actId, groepId: grpId, status }).filter(d => d.toestemmingEmail && d.email);
   if (ontvangers.length === 0) { toast('Geen ontvangers met e-mailtoestemming.', 'fout'); return; }
-  const emails    = ontvangers.map(d => d.email).join(',');
-  const onderwerp = encodeURIComponent(document.getElementById('em-onderwerp').value);
-  const bericht   = encodeURIComponent(document.getElementById('em-bericht').value);
-  window.location.href = `mailto:?bcc=${emails}&subject=${onderwerp}&body=${bericht}`;
-
-  // Log
+  const emails    = ontvangers.map(d => d.email);
+  const onderwerp = document.getElementById('em-onderwerp').value;
+  const bericht   = document.getElementById('em-bericht').value;
   const act = getAct(actId); const grp = act?.groepen?.find(g=>g.id===grpId);
   const omschr = [act?.naam||'Alle activiteiten', grp?.naam, status].filter(Boolean).join(' › ');
-  logCommunicatie('email', omschr, ontvangers.length, document.getElementById('em-onderwerp').value);
-  toast(`E-mail geopend voor ${ontvangers.length} ontvangers.`, 'succes');
+  openMailtoVenster(emails, onderwerp, bericht, omschr, 'email', ontvangers.length);
 }
 
 function kopieerWaNummers() {
@@ -2155,6 +2893,90 @@ function logCommunicatie(kanaal, omschrijving, aantalOntvangers, onderwerp) {
   db.communicatieLog = db.communicatieLog || [];
   db.communicatieLog.push({ datum: nu(), kanaal, omschrijving, aantalOntvangers, onderwerp });
   slaOp();
+}
+
+// ═══════════════════════════════════════════════
+// NIEUWSBRIEF (zonder externe dienst)
+// ═══════════════════════════════════════════════
+function getNieuwsbriefOntvangers() {
+  return db.deelnemers.filter(d => d.toestemmingEmail && d.email && d.toestemmingNieuwsbrief !== false);
+}
+
+function updateNieuwsbriefPreview() {
+  const prevEl  = document.getElementById('nb-preview');
+  const namenEl = document.getElementById('nb-preview-namen');
+  if (!prevEl) return;
+
+  const ontvangers = getNieuwsbriefOntvangers();
+  prevEl.textContent = `${ontvangers.length} ontvangers met e-mail- en nieuwsbrieftoestemming (van ${db.deelnemers.length} deelnemers totaal)`;
+  if (namenEl) {
+    const namen = ontvangers.slice(0,6).map(d=>`${d.voornaam} ${d.achternaam}`).join(', ');
+    namenEl.textContent = ontvangers.length ? namen + (ontvangers.length > 6 ? ` +${ontvangers.length-6} meer` : '') : 'Geen ontvangers.';
+  }
+  renderNbAfgemeldLijst();
+}
+
+function renderNbAfgemeldLijst() {
+  const el = document.getElementById('nb-afgemeld-lijst');
+  if (!el) return;
+  const afgemeld = db.deelnemers.filter(d => d.toestemmingNieuwsbrief === false);
+  el.innerHTML = afgemeld.length === 0
+    ? '<p class="text-muted">Niemand heeft zich afgemeld.</p>'
+    : afgemeld.map(d => `<div style="display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid var(--grijs-licht)">
+        <span class="dl-initials">${initialen(d.voornaam,d.achternaam)}</span>
+        <span style="flex:1">${esc(d.voornaam)} ${esc(d.achternaam)} <span class="text-muted">${esc(d.email)}</span></span>
+        <button class="btn btn-ghost btn-sm" onclick="heractiveerNieuwsbrief('${d.id}')">↺ Heractiveren</button>
+      </div>`).join('');
+}
+
+function heractiveerNieuwsbrief(id) {
+  const dl = getDl(id);
+  if (!dl) return;
+  dl.toestemmingNieuwsbrief = true;
+  slaOp(); updateNieuwsbriefPreview();
+  toast(`${dl.voornaam} ${dl.achternaam} ontvangt de nieuwsbrief weer.`, 'succes');
+}
+
+function laadNieuwsbriefSjabloon() {
+  const ond = document.getElementById('nb-onderwerp');
+  const ber = document.getElementById('nb-bericht');
+  if (ond) ond.value = 'Zincafé Zweeloo — nieuwsbrief';
+  if (ber) ber.value =
+`Beste [naam],
+
+Hier weer het nieuws van Zincafé Zweeloo:
+
+— ...
+
+Met vriendelijke groet,
+Nathalie & Sjoerd
+Zincafé Zweeloo
+
+—
+Wil je deze nieuwsbrief niet meer ontvangen? Mail dan terug met "afmelden" in het onderwerp of bericht, dan zorgen we dat je 'm de volgende keer niet meer krijgt.`;
+}
+
+function stuurNieuwsbrief() {
+  const ontvangers = getNieuwsbriefOntvangers();
+  if (ontvangers.length === 0) { toast('Geen ontvangers met nieuwsbrief-toestemming.', 'fout'); return; }
+  const emails    = ontvangers.map(d => d.email);
+  const onderwerp = document.getElementById('nb-onderwerp').value;
+  const bericht   = document.getElementById('nb-bericht').value;
+  openMailtoVenster(emails, onderwerp, bericht, 'Nieuwsbrief', 'email', ontvangers.length);
+}
+
+function verwerkNieuwsbriefAfmelding() {
+  const tekst = document.getElementById('nb-afmeld-plak').value;
+  const match = tekst.match(/[\w.+-]+@[\w-]+\.[\w.-]+/i);
+  if (!match) { toast('Kon geen e-mailadres herkennen in de geplakte tekst.', 'fout'); return; }
+  const email = match[0].toLowerCase();
+  const dl = db.deelnemers.find(d => d.email.toLowerCase() === email);
+  if (!dl) { toast(`Geen deelnemer gevonden met e-mailadres ${email}.`, 'fout'); return; }
+  dl.toestemmingNieuwsbrief = false;
+  slaOp();
+  document.getElementById('nb-afmeld-plak').value = '';
+  updateNieuwsbriefPreview();
+  toast(`${dl.voornaam} ${dl.achternaam} is afgemeld voor de nieuwsbrief.`, 'succes');
 }
 
 // ═══════════════════════════════════════════════
@@ -2304,6 +3126,7 @@ function renderExport() {
           <button class="btn btn-outline" onclick="exporteerCSV('deelnemers')">👥 Deelnemers exporteren</button>
           <button class="btn btn-outline" onclick="exporteerCSV('aanmeldingen')">📋 Aanmeldingen exporteren</button>
           <button class="btn btn-outline" onclick="exporteerCSV('activiteiten')">📅 Activiteiten exporteren</button>
+          <button class="btn btn-outline" onclick="exporteerCSV('interesse')">📨 Interesselijst exporteren</button>
         </div>
       </div>
 
@@ -2382,8 +3205,8 @@ function exporteerCSV(type) {
   let rows = [], filename = '';
   if (type === 'deelnemers') {
     filename = 'zincafe-deelnemers.csv';
-    rows = [['ID','Voornaam','Achternaam','E-mail','Telefoon','Woonplaats','Toest.email','Toest.WhatsApp','Aangemaakt']];
-    db.deelnemers.forEach(d => rows.push([d.id,d.voornaam,d.achternaam,d.email,d.telefoon||'',d.woonplaats||'',d.toestemmingEmail?'ja':'nee',d.toestemmingWhatsApp?'ja':'nee',d.aangemaakt]));
+    rows = [['ID','Voornaam','Achternaam','E-mail','Telefoon','Woonplaats','Toest.email','Toest.WhatsApp','Toest.nieuwsbrief','Aangemaakt']];
+    db.deelnemers.forEach(d => rows.push([d.id,d.voornaam,d.achternaam,d.email,d.telefoon||'',d.woonplaats||'',d.toestemmingEmail?'ja':'nee',d.toestemmingWhatsApp?'ja':'nee',d.toestemmingNieuwsbrief!==false?'ja':'nee',d.aangemaakt]));
   } else if (type === 'aanmeldingen') {
     filename = 'zincafe-aanmeldingen.csv';
     rows = [['ID','Deelnemer','E-mail','Activiteit','Datum activiteit','Groep','Status','Bron','Aangemeld']];
@@ -2397,6 +3220,10 @@ function exporteerCSV(type) {
     filename = 'zincafe-activiteiten.csv';
     rows = [['ID','Naam','Type','Datum','Tijd','Locatie','Max','Bevestigd','Wachtlijst','Status']];
     db.activiteiten.forEach(a => rows.push([a.id,a.naam,a.type,a.datum,a.tijd,a.locatie,a.maxDeelnemers,bevestigdAantal(a.id),wachtlijstAantal(a.id),a.status]));
+  } else if (type === 'interesse') {
+    filename = 'zincafe-interesse.csv';
+    rows = [['ID','Naam','E-mail','Telefoon','Bijeenkomst','Op de hoogte','Groepvoorkeur','Opmerking','Status','Aangemeld']];
+    (db.interesses||[]).forEach(i => rows.push([i.id,i.naam,i.email,i.telefoon||'',i.bijeenkomst||'',i.opDeHoogte||'',i.groepVoorkeur||'',i.opmerking||'',i.status,i.aangemeld]));
   }
   const csv = rows.map(r => r.map(c => `"${String(c).replace(/"/g,'""')}"`).join(',')).join('\n');
   const blob = new Blob(['\ufeff'+csv], { type: 'text/csv;charset=utf-8' });
@@ -2411,6 +3238,76 @@ function wisAlleData() {
   if (!confirm('Laatste kans: alle deelnemers, activiteiten en aanmeldingen worden verwijderd.')) return;
   localStorage.removeItem(STORE_KEY);
   location.reload();
+}
+
+// ═══════════════════════════════════════════════
+// E-MAIL HELPER (betrouwbaar openen)
+// ═══════════════════════════════════════════════
+let mailtoBuffer = null;
+
+function openMailtoVenster(emailsArr, onderwerp, bericht, logOmschr, kanaal, aantalOntvangers) {
+  const emailLijst = emailsArr.join(', ');
+  mailtoBuffer = { emails: emailsArr.join(','), onderwerp };
+
+  const html = `
+    <div style="background:var(--groen-licht);border-radius:8px;padding:10px 14px;font-size:13px;color:var(--groen);margin-bottom:16px">
+      ✅ <strong>${aantalOntvangers} ontvanger(s)</strong> gereed in BCC.
+    </div>
+    <div class="form-group mb-16">
+      <label>BCC-adressen <span class="form-hint">(worden automatisch ingevuld bij "Open in e-mail")</span></label>
+      <div style="display:flex;gap:6px;align-items:flex-start">
+        <textarea id="mv-bcc" readonly style="min-height:64px;font-size:11px;font-family:monospace;background:var(--grijs-licht);flex:1;border:1px solid var(--rand);border-radius:6px;padding:6px 8px">${esc(emailLijst)}</textarea>
+        <button class="btn btn-ghost btn-sm" onclick="kopieerTekstVeld('mv-bcc')" title="Kopieer adressen">📋</button>
+      </div>
+    </div>
+    <div class="form-group mb-16">
+      <label>Onderwerp</label>
+      <div style="display:flex;gap:6px">
+        <input id="mv-ond" readonly value="${esc(onderwerp)}" style="background:var(--grijs-licht);flex:1;border:1px solid var(--rand);border-radius:6px;padding:7px 10px">
+        <button class="btn btn-ghost btn-sm" onclick="kopieerTekstVeld('mv-ond')" title="Kopieer onderwerp">📋</button>
+      </div>
+    </div>
+    ${bericht ? `
+    <div class="form-group mb-16">
+      <label>Berichttekst <span class="form-hint">(kopieer en plak in je e-mail)</span></label>
+      <div style="display:flex;gap:6px;align-items:flex-start">
+        <textarea id="mv-body" readonly style="min-height:160px;font-family:inherit;font-size:13px;background:var(--grijs-licht);flex:1;border:1px solid var(--rand);border-radius:6px;padding:7px 10px">${esc(bericht)}</textarea>
+        <button class="btn btn-ghost btn-sm" onclick="kopieerTekstVeld('mv-body')" title="Kopieer berichttekst">📋</button>
+      </div>
+    </div>` : ''}
+    <p class="form-hint">Klik op <strong>Open in e-mail</strong> — je e-mailprogramma opent met de adressen en het onderwerp ingevuld.${bericht ? ' Plak daarna de berichttekst hierboven.' : ''}</p>
+  `;
+
+  openModal('E-mail klaarzetten', html, [
+    { label: 'Sluiten', cls: 'btn-ghost', action: 'sluitModal()' },
+    { label: '✉️ Open in e-mail', cls: 'btn-primary', action: 'openMailtoLink()' }
+  ], true);
+
+  if (logOmschr) logCommunicatie(kanaal || 'email', logOmschr, aantalOntvangers, onderwerp);
+}
+
+function openMailtoLink() {
+  if (!mailtoBuffer) return;
+  const a = document.createElement('a');
+  a.href = `mailto:?bcc=${encodeURIComponent(mailtoBuffer.emails)}&subject=${encodeURIComponent(mailtoBuffer.onderwerp)}`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  mailtoBuffer = null;
+  toast('E-mailprogramma geopend.' + (document.getElementById('mv-body') ? ' Vergeet niet de berichttekst te plakken.' : ''), 'succes');
+}
+
+function kopieerTekstVeld(id) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  const tekst = el.value;
+  if (navigator.clipboard) {
+    navigator.clipboard.writeText(tekst).then(() => toast('Gekopieerd naar klembord!', 'succes'));
+  } else {
+    el.select();
+    document.execCommand('copy');
+    toast('Gekopieerd naar klembord!', 'succes');
+  }
 }
 
 // ═══════════════════════════════════════════════
@@ -2460,6 +3357,14 @@ bijwerkBadges();
 // Communicatie: live preview update
 document.addEventListener('change', e => {
   if (e.target.id === 'em-selectie') updateEmailPreview();
+});
+
+// Globale zoekfunctie: resultaten sluiten bij klik elders
+document.addEventListener('click', e => {
+  const resEl = document.getElementById('topbar-zoek-resultaten');
+  const inputEl = document.getElementById('topbar-zoek');
+  if (!resEl || !inputEl) return;
+  if (e.target !== inputEl && !resEl.contains(e.target)) resEl.classList.add('hidden');
 });
 </script>
 
