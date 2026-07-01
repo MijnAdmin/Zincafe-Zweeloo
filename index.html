@@ -2093,7 +2093,7 @@ function voltooiAanmeldingFormspree(data, actId, grpId, bestaandId, modus) {
 
   db.aanmeldingen.push({ id: uid(), deelnemerId: dlId, activiteitId: actId,
     groepId: grpId, status, bron: 'website', aangemeld: nu(),
-    statusHistory: [{ status, datum: nu() }], notities: data.opmerking||'' });
+    statusHistory: [{ status, datum: nu() }], avondVoorkeur: data.avond||'', notities: data.opmerking||'' });
 
   slaOp(); sluitModal(); navigeer('aanmeldingen'); bijwerkBadges();
   toast(`Aanmelding verwerkt (${status}) voor ${actNaam(actId)}.`, 'succes');
@@ -2172,7 +2172,7 @@ function bulkVerwijderen() {
 // ═══════════════════════════════════════════════
 // INTERESSE (Formspree — "hou me op de hoogte")
 // ═══════════════════════════════════════════════
-const INTERESSE_VELDEN = ['naam','email','telefoon','bijeenkomst','op-de-hoogte','groepVoorkeur','opmerking'];
+const INTERESSE_VELDEN = ['naam','email','telefoon','bijeenkomst','op-de-hoogte','groepVoorkeur','avond','opmerking'];
 
 function parseFormspreeTekst(tekst) {
   const veldenLower = INTERESSE_VELDEN.map(v => v.toLowerCase());
