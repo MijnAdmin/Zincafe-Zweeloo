@@ -3139,8 +3139,9 @@ function selecteerWachtlijstPersoon(aanmId, actId) {
       ✅ Er is nog plek (${bezet}/${act.maxDeelnemers}).
     </div>`}
 
-    <div class="flex gap-8">
+    <div class="flex gap-8" style="flex-wrap:wrap">
       <button class="btn btn-primary" onclick="bevestigWachtlijstDoorschuif('${aanmId}')">✅ Bevestigen & indelen</button>
+      <button class="btn btn-danger" onclick="afmeldenVanWachtlijst('${aanmId}')">✖ Afmelden van wachtlijst</button>
       <button class="btn btn-ghost" onclick="document.getElementById('wl-actie-card').style.display='none'">Annuleren</button>
     </div>
   `;
@@ -3160,6 +3161,20 @@ function bevestigWachtlijstDoorschuif(aanmId) {
   toast(`${dl?.voornaam} ${dl?.achternaam} doorgeschoven naar bevestigd.`, 'succes');
   updateWachtlijstView();
   document.getElementById('wl-actie-card').style.display = 'none';
+}
+
+function afmeldenVanWachtlijst(aanmId) {
+  const aanm = getAanm(aanmId);
+  if (!aanm) return;
+  if (!confirm('Persoon afmelden van de wachtlijst?')) return;
+  aanm.status = 'afgemeld';
+  aanm.statusHistory = aanm.statusHistory || [];
+  aanm.statusHistory.push({ status: 'afgemeld', datum: nu() });
+  slaOp();
+  const dl = getDl(aanm.deelnemerId);
+  toast(`${dl?.voornaam} ${dl?.achternaam} afgemeld van de wachtlijst.`, 'waarschuwing');
+  document.getElementById('wl-actie-card').style.display = 'none';
+  updateWachtlijstView();
 }
 
 // ═══════════════════════════════════════════════
