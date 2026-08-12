@@ -3530,7 +3530,13 @@ async function slaOpNaarGist(toonMelding = false) {
     }
   } catch(e) {
     toonSyncIndicator('fout');
-    toast('Gist opslaan mislukt: ' + e.message, 'fout');
+    if (e.message.includes('401')) {
+      localStorage.removeItem(GIST_TOKEN_KEY);
+      localStorage.removeItem(GIST_ID_KEY);
+      toast('Gist-token ongeldig of verlopen — verwijderd. Voer een nieuw token in via Instellingen.', 'waarschuwing');
+    } else {
+      toast('Gist opslaan mislukt: ' + e.message, 'fout');
+    }
   } finally {
     gistSyncBezig = false;
   }
