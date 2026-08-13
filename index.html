@@ -1123,14 +1123,42 @@ function openActiviteitDetail(actId) {
 
   let groepenHtml = '';
   if (act.groepen && act.groepen.length) {
-    groepenHtml = act.groepen.map(g => {
-      const grpAanm = bezet.filter(a => a.groepId === g.id);
-      return `<div class="mt-8"><strong>${esc(g.naam)}</strong> (${grpAanm.length}/${g.max})
-        <div style="margin-top:4px">
-          ${grpAanm.map(a => { const dl = getDl(a.deelnemerId); return `<span style="display:inline-block;margin:2px 4px 2px 0;background:var(--blauw-licht);padding:2px 8px;border-radius:12px;font-size:12px">${esc(dl?.voornaam||'')} ${esc(dl?.achternaam||'')}</span>`; }).join('')||'<span class="text-muted">Niemand ingedeeld.</span>'}
-        </div>
+    const grpOpties = act.groepen.map(g => `<option value="${g.id}">${esc(g.naam)}</option>`).join('');
+    groepenHtml = `<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin-top:8px">` +
+      act.groepen.map(g => {
+        const grpAanm = bezet.filter(a => a.groepId === g.id);
+        const vol = grpAanm.length >= g.max;
+        return `<div style="background:var(--blauw-licht);border-radius:8px;padding:10px 12px">
+          <div style="font-weight:600;margin-bottom:6px">${esc(g.naam)} <span class="text-muted" style="font-weight:400;font-size:12px">${grpAanm.length}/${g.max}${vol?' · VOL':''}</span></div>
+          ${grpAanm.map(a => {
+            const dl = getDl(a.deelnemerId);
+            return `<div style="display:flex;align-items:center;gap:6px;padding:3px 0;border-bottom:1px solid rgba(0,0,0,0.06)">
+              <span style="flex:1;font-size:13px">${esc(dl?.voornaam||'')} ${esc(dl?.achternaam||'')}</span>
+              <select style="font-size:11px;padding:1px 3px;border:1px solid var(--rand);border-radius:4px;background:white;max-width:90px" onchange="verplaatsNaarGroep('${a.id}','${actId}',this.value)">
+                ${grpOpties.replace(`value="${g.id}"`,`value="${g.id}" selected`)}
+                <option value="">— geen —</option>
+              </select>
+            </div>`;
+          }).join('') || `<span class="text-muted" style="font-size:12px">Niemand ingedeeld.</span>`}
+        </div>`;
+      }).join('') + `</div>`;
+    // Bevestigd zonder groep
+    const zonderGroep = bezet.filter(a => !a.groepId || !act.groepen.find(g => g.id === a.groepId));
+    if (zonderGroep.length) {
+      groepenHtml += `<div style="margin-top:10px;padding:8px 12px;background:var(--geel-licht);border-radius:8px;font-size:13px">
+        <strong>Zonder groep (${zonderGroep.length}):</strong>
+        ${zonderGroep.map(a => {
+          const dl = getDl(a.deelnemerId);
+          return `<span style="display:inline-flex;align-items:center;gap:4px;margin:3px 4px 3px 0;background:white;padding:2px 6px 2px 8px;border-radius:12px;border:1px solid var(--rand)">
+            ${esc(dl?.voornaam||'')} ${esc(dl?.achternaam||'')}
+            <select style="font-size:11px;border:none;background:transparent;cursor:pointer" onchange="verplaatsNaarGroep('${a.id}','${actId}',this.value)">
+              <option value="">→ groep</option>
+              ${grpOpties}
+            </select>
+          </span>`;
+        }).join('')}
       </div>`;
-    }).join('');
+    }
   }
 
   const html = `
@@ -1907,6 +1935,14 @@ function slaAanmeldingOp(bestaandId) {
     groepId: grpId||null, status: effectiefStatus, bron, aangemeld: nu(),
     statusHistory: [{status: effectiefStatus, datum: nu()}], avondVoorkeur, notities });
   slaOp(); sluitModal(); navigeer('aanmeldingen'); toast('Aanmelding opgeslagen.', 'succes');
+}
+
+function verplaatsNaarGroep(aanmId, actId, groepId) {
+  const aanm = getAanm(aanmId);
+  if (!aanm) return;
+  aanm.groepId = groepId || null;
+  slaOp();
+  openActiviteitDetail(actId);
 }
 
 function wijzigStatus(aanmId, nieuweStatus) {
